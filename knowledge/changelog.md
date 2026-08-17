@@ -17,3 +17,10 @@
 - Created public repository: https://github.com/nil-liew/hermesworkspace
 - Pushed 2 commits to origin/main
 - Knowledge bundle is now synced to GitHub
+
+## [2026-08-17] bridge | Shared Wiki Connected
+- Created bridge documentation: `./knowledge/shared-wiki.md`
+- Connected local bundle (`./knowledge/`) to shared wiki (`~/Library/CloudStorage/.../wiki/`)
+- Shared wiki contains 76 skill concepts from davidondrej/skills
+- AGENTS.md updated to reference both knowledge systems
+- Two-source OKF workflow: local (Git-tracked) + shared (Google Drive)

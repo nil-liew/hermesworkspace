@@ -16,9 +16,14 @@ Single-context layout: one `CONTEXT.md` + `docs/adr/` at the repo root. See `doc
 
 ### OKF Knowledge Base
 
-You have access to a persistent, long-term memory system located at `./knowledge/`. This directory complies with the Open Knowledge Format (OKF) v0.1 specification — a structured directory of Markdown files with YAML frontmatter, cross-linked to form a knowledge graph.
+You have access to **two** OKF v0.1 compliant knowledge systems:
 
-**You must not use vector databases, external embedding models, or implicit semantic retrieval for your long-term memory.** Instead, interact with your memory transparently using direct file-based search, explicit path navigation, and Git version control.
+1. **Local Bundle** (`./knowledge/`) — Workspace-specific context, project decisions, agent instructions
+2. **Shared Wiki** (`~/Library/CloudStorage/GoogleDrive-.../ObsidianKB/wiki/`) — 76 skill concepts from davidondrej/skills
+
+[Read the bridge documentation](./shared-wiki.md) for details on both systems.
+
+**You must not use vector databases, external embedding models, or implicit semantic retrieval for your long-term memory.** Instead, interact with your memory transparently using direct file-based search, explicit path navigation, and Git version control (for local bundle only).
 
 #### 1. Structure
 - **Concepts as Files**: Every distinct concept, entity, decision, runbook, or architecture pattern is stored as a single `.md` file inside `./knowledge/`. The file path is the concept's unique identity.
@@ -43,14 +48,18 @@ When recalling past decisions, specifications, or historical context:
    - Example: Search for files containing specific frontmatter tags using pattern matching or text-search tools rather than semantic vector similarity.
 
 2. **Progressive Disclosure**:
-   - **Step A**: Read `./knowledge/index.md` or scan file names/paths to map available topic domains.
-   - **Step B**: Inspect only the YAML frontmatter of candidate files first to filter by metadata (e.g., check `type` or `status`).
-   - **Step C**: Read the full Markdown body only for files relevant to the active task.
-   - **Step D**: Follow internal Markdown links to explore neighbor concepts if deeper context is required.
+   - **Step A**: Read `./knowledge/index.md` to map Hermes workspace context, then read `./knowledge/shared-wiki.md` to understand the shared wiki.
+   - **Step B**: For local concepts, inspect frontmatter in `./knowledge/`. For skills, check YAML frontmatter in `~/Library/CloudStorage/.../wiki/concepts/`.
+   - **Step C**: Read full content only for files relevant to the active task.
+   - **Step D**: Follow Markdown links across both systems — local concepts link to shared wiki skills and vice versa.
 
 #### 3. Memory Maintenance & Writing Protocol
 
-- **Create/Update on Breakthrough**: When you resolve a complex problem, establish a new architecture decision, or learn a critical codebase rule, write or update a concept file in `./knowledge/`.
-- **In-Place Updates**: Update existing files directly rather than fragmenting context across multiple redundant files. Keep content clean, concise, and heavily cross-linked.
-- **Git Integration**: Treat memory modifications as code changes. Every significant memory update should be cleanly diffable so humans can review, audit, or roll back changes via Git.
-- **Logging**: Record all updates in `./knowledge/changelog.md` with format: `## [YYYY-MM-DD] action | Short Title`
+- **Create/Update on Breakthrough**: When you resolve a complex problem, establish a new architecture decision, or learn a critical codebase rule:
+  - Write to `./knowledge/` for workspace-specific context (version-controlled via Git)
+  - Update `~/Library/CloudStorage/.../wiki/concepts/` for shared skill documentation
+- **In-Place Updates**: Update existing files directly rather than fragmenting context across multiple redundant files.
+- **Git Integration**: Local bundle changes are tracked via Git at https://github.com/nil-liew/hermesworkspace
+- **Logging**: Record updates in both locations:
+  - `./knowledge/changelog.md` for local changes
+  - `~/Library/CloudStorage/.../wiki/log.md` for shared wiki changes
