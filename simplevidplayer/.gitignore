@@ -1,0 +1,11 @@
+# Xcode / build artifacts
+SimpleVidPlayer.xcodeproj/
+build/
+DerivedData/
+*.xcuserdatad/
+
+# Vendored binary framework (865MB — extracted from SwiftPM artifact cache)
+VLCKit.xcframework/
+
+# macOS cruft
+.DS_Store

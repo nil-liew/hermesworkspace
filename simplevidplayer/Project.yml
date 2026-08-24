@@ -1,0 +1,25 @@
+name: SimpleVidPlayer
+options:
+  bundleIdPrefix: com.humankindsolution
+  xcodeVersion: "16.0"
+  generateLastUpdateTime: false
+
+settings:
+  base:
+    MACOSX_DEPLOYMENT_TARGET: 13.0
+    SWIFT_VERSION: 5.9
+    GENERATE_INFOPLIST_FILE: YES
+
+targets:
+  SimpleVidPlayer:
+    type: application
+    platform: macOS
+    deploymentTarget: "13.0"
+    sources: [Sources/SimpleVidPlayer]
+    settings:
+      base:
+        FRAMEWORK_SEARCH_PATHS: ["$(inherited)", "$(PROJECT_DIR)"]
+        LD_RUNPATH_SEARCH_PATHS: ["$(inherited)", "@executable_path/../Frameworks", "@executable_path"]
+    dependencies:
+      - framework: VLCKit.xcframework/VLCKit.xcframework/macos-arm64_x86_64/VLCKit.framework
+        embed: true
