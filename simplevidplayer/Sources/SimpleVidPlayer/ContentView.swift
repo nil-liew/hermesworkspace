@@ -124,6 +124,26 @@ struct ContentView: View {
                     .keyboardShortcut(.upArrow, modifiers: [])
                 Button("") { vm.playNext() }
                     .keyboardShortcut(.downArrow, modifiers: [])
+                Button("") { vm.cycleScreenSize() }
+                    .keyboardShortcut("0", modifiers: [])
+                Button("") { vm.stepFrames(-1) }
+                    .keyboardShortcut("1", modifiers: [])
+                Button("") { vm.stepFrames(1) }
+                    .keyboardShortcut("2", modifiers: [])
+                Button("") { vm.seekBy(-15) }
+                    .keyboardShortcut("4", modifiers: [])
+                Button("") { vm.seekBy(15) }
+                    .keyboardShortcut("5", modifiers: [])
+                Button("") { vm.seekBy(-60) }
+                    .keyboardShortcut("7", modifiers: [])
+                Button("") { vm.seekBy(60) }
+                    .keyboardShortcut("8", modifiers: [])
+                Button("") { openFiles() }
+                    .keyboardShortcut("o", modifiers: [])
+                Button(action: { withAnimation { showPlaylist.toggle() } }) {
+                    EmptyView()
+                }
+                .keyboardShortcut("p", modifiers: [])
             }
             .opacity(0)
         )

@@ -23,6 +23,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     @Published var player = VLCMediaPlayer(options: ["--no-video-title-show"])
     // Video rotation in 90° steps: 0 = none, 1 = 90° CW, 2 = 180°, 3 = 270° (90° CCW)
     @Published var rotationSteps = 0
+    // Screen size cycle: 0 = normal (1x), 1 = half (0.5x), 2 = double (2x)
+    @Published var screenSizeStep = 0
+    // Video fps from parsed media metadata; 0 = unknown (frame step falls back to 30fps)
+    var framesPerSecond: Double = 0
 
     override init() {
         super.init()
@@ -43,27 +47,83 @@ final class PlayerViewModel: NSObject, ObservableObject {
         duration = 0
         isPlaying = false
         rotationSteps = 0
-        // VLCKit 4 bug: its OpenGL vout asserts (vout_display_opengl_Prepare) if
-        // the old vout is still rendering when a new player attaches to the same
-        // view. Detach + stop the old player, and only create/attach the fresh one
-        // on the NEXT runloop turn so the old vout thread fully quiesces.
+        pendingURL = url
+        scheduleSwap()
+    }
+
+    /// Serializes player swaps. Rapid file jumps (↑/↓, row clicks, auto-advance)
+    /// collapse into one swap for the LAST requested URL — the GL vout asserts if
+    /// a new player attaches to the view while the previous swap is still settling.
+    private func scheduleSwap() {
+        guard !swapPending else { return }
+        swapPending = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+            guard let self else { return }
+            self.swapPending = false
+            guard let url = self.pendingURL else { return }
+            self.performSwap(to: url)
+        }
+    }
+
+    private var swapPending = false
+    private var pendingURL: URL?
+
+    private func performSwap(to url: URL) {
+        // If more requests arrived while we were settling, run the latest again.
+        if pendingURL != url {
+            scheduleSwap()
+            return
+        }
+        pendingURL = nil
+        guard let media = VLCMedia(url: url) else { return }
         let retiring = player
         retiring.delegate = nil
         retiring.drawable = nil
-        retiring.stop()
-        videoView?.needsDisplay = true
 
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            let fresh = VLCMediaPlayer(options: ["--no-video-title-show"])
-            fresh.media = VLCMedia(url: url)
-            fresh.delegate = self
-            self.player = fresh
-            if let view = self.videoView {
-                fresh.drawable = view
-            }
-            fresh.play()
+        framesPerSecond = 0   // unknown until tracks are parsed
+
+        // async parse to learn fps for accurate frame stepping
+        let parser = VLCMediaParser(library: VLCLibrary.shared(), timeout: 5000)
+        _ = parser.queue(media, options: [.init(rawValue: 0x01)])   // VLCMediaParse
+
+        let fresh = VLCMediaPlayer(options: ["--no-video-title-show"])
+        fresh.delegate = self
+        fresh.media = media
+        player = fresh
+        if let view = videoView {
+            fresh.drawable = view
         }
+        fresh.play()
+
+        // Retire the old player off-main, delayed so its timer/vout threads fully
+        // quiesce before dealloc (vlc_player_Lock abort otherwise).
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 1.5) {
+            retiring.stop()
+        }
+
+        // Poll briefly for parsed fps (frame stepping accuracy). Falls back to 30fps.
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            for _ in 0..<20 {
+                Thread.sleep(forTimeInterval: 0.25)
+                guard let self, self.currentURL == url else { return }
+                if self.readFPS(from: media) > 0 {
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self, self.currentURL == url else { return }
+                        self.framesPerSecond = self.readFPS(from: media)
+                    }
+                    return
+                }
+            }
+        }
+    }
+
+    private func readFPS(from media: VLCMedia) -> Double {
+        guard let track = media.tracksInformation.first(where: { $0.video != nil }),
+              let video = track.video,
+              video.frameRate > 0
+        else { return 0 }
+        let den = max(1.0, Double(video.frameRateDenominator))
+        return Double(video.frameRate) / den
     }
 
     /// Weak ref to the drop/draw view so each new player can attach to it.
@@ -85,6 +145,52 @@ final class PlayerViewModel: NSObject, ObservableObject {
 
     func rotateCounterClockwise() {
         rotationSteps = (rotationSteps + 3) % 4
+    }
+
+    // MARK: - Seeking (frame step & time skips)
+
+    /// Frame step using VLCKit's native frame stepper (exact, fps-aware).
+    /// Auto-pauses playback on first step, matching standard player behavior.
+    func stepFrames(_ count: Int) {
+        if count >= 1 {
+            for _ in 0..<count { player.gotoNextFrame() }
+        } else if count <= -1 {
+            for _ in 0..<(-count) { player.gotoPreviousFrame() }
+        }
+    }
+
+    func seekBy(_ seconds: TimeInterval) {
+        let current = Double(player.time.intValue) / 1000.0
+        let newTime = max(0, min(duration > 0 ? duration : .infinity, current + seconds))
+        player.time = VLCTime(int: Int32(newTime * 1000))
+        currentTime = newTime
+    }
+
+    // MARK: - Screen size toggle ("0"): normal <-> fit full display
+
+    func cycleScreenSize() {
+        screenSizeStep = (screenSizeStep + 1) % 2
+        resizeWindow(for: screenSizeStep)
+    }
+
+    private func resizeWindow(for step: Int) {
+        guard let window = NSApp.keyWindow ?? NSApp.windows.first(where: { $0.isVisible }) else { return }
+        guard let screen = window.screen ?? NSScreen.main else { return }
+        let vis = screen.visibleFrame
+        let newSize: CGSize
+        if step == 1 {
+            newSize = vis.size   // fit full display
+        } else {
+            newSize = CGSize(width: 960, height: 592)   // default size
+        }
+        // Center in the visible screen frame
+        let newFrame = NSRect(
+            x: vis.midX - newSize.width / 2,
+            y: vis.midY - newSize.height / 2,
+            width: newSize.width,
+            height: newSize.height
+        )
+        window.setFrame(newFrame, display: true, animate: true)
     }
 
     func playNext() {
@@ -123,9 +229,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
             let wasBefore = i < currentIndex
             playlist.remove(at: i)
             if wasCurrent {
-                player.drawable = nil
-                player.delegate = nil
-                player.stop()
+                let retiring = player
+                retiring.delegate = nil
+                retiring.drawable = nil
+                DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 1.0) {
+                    retiring.stop()
+                }
                 let fresh = VLCMediaPlayer(options: ["--no-video-title-show"])
                 fresh.delegate = self
                 player = fresh
@@ -193,9 +302,12 @@ final class PlayerViewModel: NSObject, ObservableObject {
     }
 
     func clearPlaylist() {
-        player.drawable = nil
-        player.delegate = nil
-        player.stop()
+        let retiring = player
+        retiring.delegate = nil
+        retiring.drawable = nil
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 1.0) {
+            retiring.stop()
+        }
         let fresh = VLCMediaPlayer(options: ["--no-video-title-show"])
         fresh.delegate = self
         player = fresh
