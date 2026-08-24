@@ -94,6 +94,13 @@ final class PlayerViewModel: NSObject, ObservableObject {
         }
     }
 
+    func playPrevious() {
+        let prev = currentIndex - 1
+        if prev >= 0 {
+            play(at: prev)
+        }
+    }
+
     // MARK: - Playlist management
 
     /// Adds files to the playlist. If nothing is playing, starts the first added file.

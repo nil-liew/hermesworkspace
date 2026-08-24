@@ -120,6 +120,10 @@ struct ContentView: View {
                     .keyboardShortcut("]", modifiers: [])
                 Button("") { vm.rotateCounterClockwise() }
                     .keyboardShortcut("[", modifiers: [])
+                Button("") { vm.playPrevious() }
+                    .keyboardShortcut(.upArrow, modifiers: [])
+                Button("") { vm.playNext() }
+                    .keyboardShortcut(.downArrow, modifiers: [])
             }
             .opacity(0)
         )
