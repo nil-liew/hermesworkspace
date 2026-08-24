@@ -5,6 +5,12 @@ struct VideoContainerView: NSViewRepresentable {
     let vm: PlayerViewModel
     let onFile: (URL) -> Void
 
+    final class Coordinator {
+        var appliedSteps = 0
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
     func makeNSView(context: Context) -> NSView {
         let view = DropView()
         view.onFile = onFile
@@ -17,7 +23,46 @@ struct VideoContainerView: NSViewRepresentable {
         (nsView as? DropView)?.onFile = onFile
         if vm.player.drawable == nil {
             vm.player.drawable = nsView
+            // fresh drawable: force rotation to be re-applied once the vout settles
+            context.coordinator.appliedSteps = -2
         }
+        // CRITICAL: only touch geometry when the rotation step CHANGED.
+        // Re-applying frames/transforms while a vout is initializing aborts VLCKit.
+        if context.coordinator.appliedSteps != vm.rotationSteps {
+            applyRotation(to: nsView, steps: vm.rotationSteps)
+            context.coordinator.appliedSteps = vm.rotationSteps
+        }
+    }
+
+    /// Rotate the drawable view in 90° steps. For 90°/270° swap the frame's
+    /// width/height so the rotated picture fits the container.
+    private func applyRotation(to view: NSView, steps: Int) {
+        guard let superview = view.superview else { return }
+        let bounds = superview.bounds
+        let w = bounds.width, h = bounds.height
+
+        if steps % 4 == 0 {
+            view.layer?.transform = CATransform3DIdentity
+            view.frame = bounds
+            view.setFrameOrigin(.zero)
+            return
+        }
+
+        let swapped = (steps == 1 || steps == 3)
+        var frameW = swapped ? h : w
+        var frameH = swapped ? w : h
+        if swapped {
+            // A w×h view rotated 90° occupies h×w on screen. Scale it down so
+            // the rotated result fits inside the w×h container.
+            let s = min(h / max(w, 1), w / max(h, 1))
+            frameW = w * s
+            frameH = h * s
+        }
+        view.frame = CGRect(x: 0, y: 0, width: frameW, height: frameH)
+        view.layer?.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+        view.layer?.position = CGPoint(x: w / 2, y: h / 2)
+        let angle: CGFloat = steps == 1 ? -90 : (steps == 2 ? 180 : 90) // CA rotation is CCW-positive
+        view.layer?.transform = CATransform3DMakeRotation(angle * .pi / 180, 0, 0, 1)
     }
 }
 
@@ -68,9 +113,15 @@ struct ContentView: View {
         .background(Color.black)
         .preferredColorScheme(.dark)
         .background(
-            Button("") { vm.togglePlay() }
-                .keyboardShortcut(.space, modifiers: [])
-                .opacity(0)
+            VStack {
+                Button("") { vm.togglePlay() }
+                    .keyboardShortcut(.space, modifiers: [])
+                Button("") { vm.rotateClockwise() }
+                    .keyboardShortcut("]", modifiers: [])
+                Button("") { vm.rotateCounterClockwise() }
+                    .keyboardShortcut("[", modifiers: [])
+            }
+            .opacity(0)
         )
     }
 

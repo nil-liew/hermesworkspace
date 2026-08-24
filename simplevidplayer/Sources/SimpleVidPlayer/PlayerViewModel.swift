@@ -21,6 +21,8 @@ final class PlayerViewModel: NSObject, ObservableObject {
     @Published var currentIndex: Int = -1
     // Published so views re-bind when the player is recreated per media load.
     @Published var player = VLCMediaPlayer(options: ["--no-video-title-show"])
+    // Video rotation in 90° steps: 0 = none, 1 = 90° CW, 2 = 180°, 3 = 270° (90° CCW)
+    @Published var rotationSteps = 0
 
     override init() {
         super.init()
@@ -40,6 +42,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
         currentTime = 0
         duration = 0
         isPlaying = false
+        rotationSteps = 0
         // VLCKit 4 bug: its OpenGL vout asserts (vout_display_opengl_Prepare) if
         // the old vout is still rendering when a new player attaches to the same
         // view. Detach + stop the old player, and only create/attach the fresh one
@@ -72,6 +75,16 @@ final class PlayerViewModel: NSObject, ObservableObject {
         } else {
             player.play()
         }
+    }
+
+    // MARK: - Rotation
+
+    func rotateClockwise() {
+        rotationSteps = (rotationSteps + 1) % 4
+    }
+
+    func rotateCounterClockwise() {
+        rotationSteps = (rotationSteps + 3) % 4
     }
 
     func playNext() {
