@@ -99,6 +99,7 @@ struct ContentView: View {
     @State private var isSeeking = false
     @State private var seekValue: Double = 0
     @State private var dragSelection: Int?
+    @State private var showCheatsheet = false
 
     init() {
         _vm = StateObject(wrappedValue: PlayerViewModel())
@@ -146,6 +147,10 @@ struct ContentView: View {
                     .keyboardShortcut("-", modifiers: [])
                 Button("") { vm.toggleClip() }
                     .keyboardShortcut("+", modifiers: [])
+                Button(action: { withAnimation { showCheatsheet.toggle() } }) {
+                    EmptyView()
+                }
+                .keyboardShortcut("i", modifiers: [])
                 Button("") { openFiles() }
                     .keyboardShortcut("o", modifiers: [])
                 Button(action: { withAnimation { showPlaylist.toggle() } }) {
@@ -163,7 +168,7 @@ struct ContentView: View {
         ZStack {
             Color.black
             if vm.currentURL == nil {
-                Text("Open a video to start")
+                Text("Drag a video here to start")
                     .foregroundColor(Color(white: 0.3))
             }
             VideoContainerView(vm: vm) { urls in
@@ -214,6 +219,85 @@ struct ContentView: View {
                     .transition(.opacity)
             }
         }
+        .overlay {
+            if showCheatsheet {
+                CheatsheetView()
+                    .transition(.opacity)
+            }
+        }
+    }
+
+    // MARK: - Shortcut cheatsheet overlay
+
+    private struct CheatsheetRow: Identifiable {
+        let id = UUID()
+        let keys: String
+        let action: String
+    }
+
+    private static let cheatRows: [CheatsheetRow] = [
+        .init(keys: "Space", action: "Play / Pause"),
+        .init(keys: "1 / 2", action: "−1 / +1 frame"),
+        .init(keys: "4 / 5", action: "−15 / +15 seconds"),
+        .init(keys: "7 / 8", action: "−60 / +60 seconds"),
+        .init(keys: "← hold / → hold", action: "2× Rewind / Fast-forward"),
+        .init(keys: "[ / ]", action: "Rotate counter-clockwise / clockwise"),
+        .init(keys: "↑ / ↓", action: "Previous / next file"),
+        .init(keys: "0", action: "Normal ↔ full display size"),
+        .init(keys: "o", action: "Open files"),
+        .init(keys: "p", action: "Toggle playlist panel"),
+        .init(keys: "-", action: "Screenshot → <name> <N>.jpg"),
+        .init(keys: "+", action: "Start / stop video clipping"),
+        .init(keys: "i", action: "Toggle this cheatsheet"),
+    ]
+
+    private struct CheatsheetView: View {
+        let rows = ContentView.cheatRows
+
+        private func rowView(_ row: CheatsheetRow) -> some View {
+            HStack(spacing: 12) {
+                Text(row.keys)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color(red: 1.0, green: 0.77, blue: 0.5))
+                    .frame(width: 130, alignment: .trailing)
+                Text(row.action)
+                    .font(.system(size: 12))
+                    .foregroundColor(.white.opacity(0.85))
+                Spacer()
+            }
+        }
+
+        var body: some View {
+            VStack(spacing: 0) {
+                Text("Keyboard Shortcuts")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.vertical, 10)
+                Divider()
+                    .overlay(Color.white.opacity(0.15))
+                VStack(alignment: .leading, spacing: 7) {
+                    ForEach(rows) { row in
+                        rowView(row)
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 14)
+                Text("press i or click ⓘ to close")
+                    .font(.system(size: 10))
+                    .foregroundColor(.white.opacity(0.45))
+                    .padding(.bottom, 10)
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.black.opacity(0.92))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.white.opacity(0.15))
+            )
+            .shadow(radius: 20)
+            .padding(30)
+        }
     }
 
     // MARK: - Controls bar
@@ -253,6 +337,14 @@ struct ContentView: View {
             Text(timeString(vm.duration))
                 .font(.system(size: 11).monospacedDigit())
                 .foregroundColor(.secondary)
+
+            Button(action: { withAnimation { showCheatsheet.toggle() } }) {
+                Image(systemName: "info.circle")
+                    .font(.system(size: 14))
+            }
+            .buttonStyle(.plain)
+            .foregroundColor(.secondary)
+            .help("Keyboard shortcuts (i)")
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
