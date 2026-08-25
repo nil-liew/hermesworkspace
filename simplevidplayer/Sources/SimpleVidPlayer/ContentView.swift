@@ -138,6 +138,10 @@ struct ContentView: View {
                     .keyboardShortcut("7", modifiers: [])
                 Button("") { vm.seekBy(60) }
                     .keyboardShortcut("8", modifiers: [])
+                Button("") { vm.captureScreenshot() }
+                    .keyboardShortcut("-", modifiers: [])
+                Button("") { vm.toggleClip() }
+                    .keyboardShortcut("+", modifiers: [])
                 Button("") { openFiles() }
                     .keyboardShortcut("o", modifiers: [])
                 Button(action: { withAnimation { showPlaylist.toggle() } }) {
@@ -160,6 +164,42 @@ struct ContentView: View {
             }
             VideoContainerView(vm: vm) { url in
                 vm.addToPlaylistAndPlay([url])
+            }
+
+            VStack {
+                Spacer()
+                HStack {
+                    if vm.isClipping {
+                        Label("CLIPPING", systemImage: "record.circle")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.red)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Capsule().fill(Color.black.opacity(0.7)))
+                    }
+                    if let msg = vm.clippingMessage {
+                        Text(msg)
+                            .font(.system(size: 11))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Capsule().fill(Color.black.opacity(0.7)))
+                    }
+                    Spacer()
+                }
+                .padding(12)
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if let msg = vm.clippingMessage {
+                Text(msg)
+                    .font(.system(size: 11))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(Color.black.opacity(0.75)))
+                    .foregroundColor(.white)
+                    .padding(.bottom, 8)
+                    .transition(.opacity)
             }
         }
     }

@@ -166,6 +166,149 @@ final class PlayerViewModel: NSObject, ObservableObject {
         currentTime = newTime
     }
 
+    // MARK: - Screenshot ("-")
+
+    /// Captures the current video frame and saves it as
+    /// "<sourceName> <N>.jpg" in the source file's folder.
+    func captureScreenshot() {
+        guard let sourceURL = currentURL else { return }
+        let folder = sourceURL.deletingLastPathComponent()
+        let base = sourceURL.deletingPathExtension().lastPathComponent
+
+        // Find next free incremental suffix
+        var index = 1
+        while FileManager.default.fileExists(atPath: folder.appendingPathComponent("\(base) \(index).jpg").path) {
+            index += 1
+        }
+        let destURL = folder.appendingPathComponent("\(base) \(index).jpg")
+
+        // VLCKit snapshots to its own naming inside the given path; snapshot into
+        // a temp dir, then convert to JPEG with our name.
+        let tmpDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("svp-shot-\(UUID().uuidString)", isDirectory: true)
+        try? FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
+        player.saveVideoSnapshot(at: tmpDir.path, withWidth: 0, andHeight: 0)
+
+        // Give VLC a beat to finish writing, then grab the newest file
+        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.3) {
+            let files = ((try? FileManager.default.contentsOfDirectory(at: tmpDir, includingPropertiesForKeys: [.contentModificationDateKey])) ?? [])
+                .filter { $0.pathExtension.lowercased() == "png" || $0.pathExtension.lowercased() == "jpg" }
+                .sorted(by: { lhs, rhs in
+                    let l = (try? lhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+                    let r = (try? rhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+                    return l > r
+                })
+            guard let snap = files.first,
+                  let ciImage = CIImage(contentsOf: snap),
+                  let cgImage = CIContext().createCGImage(ciImage, from: ciImage.extent)
+            else {
+                try? FileManager.default.removeItem(at: tmpDir)
+                return
+            }
+            let rep = NSBitmapImageRep(cgImage: cgImage)
+            if let jpegData = rep.representation(using: .jpeg, properties: [.compressionFactor: 0.92]) {
+                try? jpegData.write(to: destURL)
+            }
+            try? FileManager.default.removeItem(at: tmpDir)
+            DispatchQueue.main.async { [weak self] in
+                self?.lastScreenshotPath = destURL
+            }
+        }
+    }
+
+    /// Path of the most recent screenshot (for UI feedback).
+    @Published var lastScreenshotPath: URL?
+
+    // MARK: - Video clipping ("+" start, "+" again stop)
+
+    @Published var isClipping = false
+    @Published var clippingMessage: String?
+    private var clipStart: TimeInterval = 0
+    private var clipProcess: Process?
+
+    /// "+" starts a clip at the current playhead; pressing "+" again stops and
+    /// saves "<sourceName> clip <N>.<ext>" (source container format) in the
+    /// source folder via ffmpeg stream-copy (no re-encode).
+    func toggleClip() {
+        if isClipping {
+            stopClipAndSave()
+        } else {
+            guard let sourceURL = currentURL else { return }
+            clipStart = Double(player.time.intValue) / 1000.0
+            isClipping = true
+            clippingMessage = "Clipping from \(timeString(clipStart)) — press + to stop"
+        }
+    }
+
+    private func stopClipAndSave() {
+        guard isClipping,
+              let sourceURL = currentURL,
+              let ffmpeg = locateFFmpeg()
+        else {
+            isClipping = false
+            return
+        }
+        isClipping = false
+        let start = clipStart
+        let duration = max(0.1, Double(player.time.intValue) / 1000.0 - start)
+        let folder = sourceURL.deletingLastPathComponent()
+        let base = sourceURL.deletingPathExtension().lastPathComponent
+        let ext = sourceURL.pathExtension.isEmpty ? "mp4" : sourceURL.pathExtension
+
+        var index = 1
+        while FileManager.default.fileExists(atPath: folder.appendingPathComponent("\(base) clip \(index).\(ext)").path) {
+            index += 1
+        }
+        let destURL = folder.appendingPathComponent("\(base) clip \(index).\(ext)")
+
+        clippingMessage = "Saving clip…"
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let p = Process()
+            p.executableURL = ffmpeg
+            p.arguments = ["-y",
+                           "-ss", String(format: "%.3f", start),
+                           "-i", sourceURL.path,
+                           "-t", String(format: "%.3f", duration),
+                           "-c", "copy",
+                           "-avoid_negative_ts", "make_zero",
+                           destURL.path]
+            p.standardOutput = FileHandle.nullDevice
+            p.standardError = FileHandle.nullDevice
+            try? p.run()
+            p.waitUntilExit()
+
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                if p.terminationStatus == 0 {
+                    self.clippingMessage = "Saved \(destURL.lastPathComponent)"
+                } else {
+                    self.clippingMessage = "Clip failed (ffmpeg exit \(p.terminationStatus))"
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in
+                    self?.clippingMessage = nil
+                }
+            }
+        }
+    }
+
+    /// Finds ffmpeg in common locations (PATH may be absent for GUI apps).
+    private func locateFFmpeg() -> URL? {
+        let candidates = [
+            "/opt/homebrew/bin/ffmpeg",
+            "/usr/local/bin/ffmpeg",
+            "/usr/bin/ffmpeg"
+        ]
+        for c in candidates where FileManager.default.isExecutableFile(atPath: c) {
+            return URL(fileURLWithPath: c)
+        }
+        return nil
+    }
+
+    private func timeString(_ t: TimeInterval) -> String {
+        let s = Int(t)
+        return String(format: "%02d:%02d", s / 60, s % 60)
+    }
+
     // MARK: - Screen size toggle ("0"): normal <-> fit full display
 
     func cycleScreenSize() {
