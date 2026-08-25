@@ -10,3 +10,4 @@ VLCKit.xcframework/
 # macOS cruft
 .DS_Store
 SimpleVidPlayer.dmg
+build_rel/
