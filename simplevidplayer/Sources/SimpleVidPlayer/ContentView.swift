@@ -3,7 +3,7 @@ import VLCKit
 
 struct VideoContainerView: NSViewRepresentable {
     let vm: PlayerViewModel
-    let onFile: (URL) -> Void
+    let onFiles: ([URL]) -> Void
 
     final class Coordinator {
         var appliedSteps = 0
@@ -13,14 +13,14 @@ struct VideoContainerView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSView {
         let view = DropView()
-        view.onFile = onFile
+        view.onFiles = onFiles
         vm.player.drawable = view
         vm.videoView = view
         return view
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        (nsView as? DropView)?.onFile = onFile
+        (nsView as? DropView)?.onFiles = onFiles
         if vm.player.drawable == nil {
             vm.player.drawable = nsView
             // fresh drawable: force rotation to be re-applied once the vout settles
@@ -67,7 +67,7 @@ struct VideoContainerView: NSViewRepresentable {
 }
 
 final class DropView: NSView {
-    var onFile: ((URL) -> Void)?
+    var onFiles: (([URL]) -> Void)?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -86,9 +86,9 @@ final class DropView: NSView {
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
         guard let urls = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self],
                                                                options: [.urlReadingFileURLsOnly: true]) as? [URL],
-              let url = urls.first
+              !urls.isEmpty
         else { return false }
-        DispatchQueue.main.async { self.onFile?(url) }
+        DispatchQueue.main.async { self.onFiles?(urls) }
         return true
     }
 }
@@ -99,6 +99,10 @@ struct ContentView: View {
     @State private var isSeeking = false
     @State private var seekValue: Double = 0
     @State private var dragSelection: Int?
+
+    init() {
+        _vm = StateObject(wrappedValue: PlayerViewModel())
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -162,13 +166,21 @@ struct ContentView: View {
                 Text("Open a video to start")
                     .foregroundColor(Color(white: 0.3))
             }
-            VideoContainerView(vm: vm) { url in
-                vm.addToPlaylistAndPlay([url])
+            VideoContainerView(vm: vm) { urls in
+                vm.addToPlaylistAndPlay(urls)
             }
 
             VStack {
                 Spacer()
                 HStack {
+                    if vm.isSpeeding, let label = vm.speedLabel {
+                        Text(label)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Capsule().fill(Color.black.opacity(0.7)))
+                    }
                     if vm.isClipping {
                         Label("CLIPPING", systemImage: "record.circle")
                             .font(.system(size: 11, weight: .bold))
@@ -241,16 +253,6 @@ struct ContentView: View {
             Text(timeString(vm.duration))
                 .font(.system(size: 11).monospacedDigit())
                 .foregroundColor(.secondary)
-
-            Spacer()
-
-            Button("Open") { openFiles() }
-                .buttonStyle(.borderless)
-
-            Button(action: { withAnimation { showPlaylist.toggle() } }) {
-                Image(systemName: "list.bullet")
-            }
-            .buttonStyle(.borderless)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)

@@ -31,6 +31,23 @@ final class PlayerViewModel: NSObject, ObservableObject {
     override init() {
         super.init()
         player.delegate = self
+        installKeyMonitor()
+    }
+
+    // Hold ← / → for 2× rewind / fast-forward. Raw NSEvent monitor lives here
+    // so there is no wiring race with the app delegate.
+    private var keyMonitor: Any?
+
+    private func installKeyMonitor() {
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .keyUp]) { [weak self] event in
+            guard let self else { return event }
+            switch (event.type, event.keyCode) {
+            case (.keyDown, 123): self.startRewind(); return nil
+            case (.keyDown, 124): self.startFastForward(); return nil
+            case (.keyUp, 123), (.keyUp, 124): self.restoreRate(); return nil
+            default: return event
+            }
+        }
     }
 
     // MARK: - Playback
@@ -75,11 +92,23 @@ final class PlayerViewModel: NSObject, ObservableObject {
             return
         }
         pendingURL = nil
-        guard let media = VLCMedia(url: url) else { return }
+
+        // Stop the retiring player FIRST, on a background queue, and wait for it.
+        // The AVI crash showed the old player's OpenGL vout still drawing on the
+        // main thread while a fresh player attached to the same view. Waiting for
+        // stop() makes the handover exclusive. stop() itself runs off-main, so
+        // this short main-thread wait cannot deadlock.
         let retiring = player
         retiring.delegate = nil
         retiring.drawable = nil
+        let sem = DispatchSemaphore(value: 0)
+        DispatchQueue.global(qos: .utility).async {
+            retiring.stop()
+            sem.signal()
+        }
+        _ = sem.wait(timeout: .now() + 2.0)
 
+        guard let media = VLCMedia(url: url) else { return }
         framesPerSecond = 0   // unknown until tracks are parsed
 
         // async parse to learn fps for accurate frame stepping
@@ -94,12 +123,6 @@ final class PlayerViewModel: NSObject, ObservableObject {
             fresh.drawable = view
         }
         fresh.play()
-
-        // Retire the old player off-main, delayed so its timer/vout threads fully
-        // quiesce before dealloc (vlc_player_Lock abort otherwise).
-        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 1.5) {
-            retiring.stop()
-        }
 
         // Poll briefly for parsed fps (frame stepping accuracy). Falls back to 30fps.
         DispatchQueue.global(qos: .utility).async { [weak self] in
@@ -164,6 +187,47 @@ final class PlayerViewModel: NSObject, ObservableObject {
         let newTime = max(0, min(duration > 0 ? duration : .infinity, current + seconds))
         player.time = VLCTime(int: Int32(newTime * 1000))
         currentTime = newTime
+    }
+
+    // MARK: - Playback rate (hold ← 2× rewind, hold → 2× forward)
+
+    @Published var isSpeeding = false
+    @Published var speedLabel: String?
+
+    func startFastForward() {
+        guard !isSpeeding else { return }
+        isSpeeding = true
+        speedLabel = "2x ▶▶"
+        player.fastForward(atRate: 2.0)
+    }
+
+    func startRewind() {
+        guard !isSpeeding else { return }
+        isSpeeding = true
+        speedLabel = "◀◀ 2x"
+        // VLC rewind(atRate:) only works on streams supporting backward playback
+        // (most files don't). Simulate 2× rewind by jumping back 2×-realtime.
+        // NOTE: keep the player PLAYING — pausing here puts the decoder into
+        // frame-step mode and rapid seeks while paused abort VLCKit internally
+        // (Decoder_PausedForNextFrame assert). Playing-state seeks are safe.
+        seekBy(-1.0)   // immediate first jump so the hold feels instant
+        rewindTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, self.isSpeeding else { return }
+                self.seekBy(-1.0)   // 0.25s tick × ~4 jumps/s ≈ 2× realtime
+            }
+        }
+    }
+
+    private var rewindTimer: Timer?
+
+    func restoreRate() {
+        guard isSpeeding else { return }
+        isSpeeding = false
+        speedLabel = nil
+        rewindTimer?.invalidate()
+        rewindTimer = nil
+        player.rate = 1.0
     }
 
     // MARK: - Screenshot ("-")
