@@ -6,9 +6,14 @@ class ImageStore: ObservableObject {
     @Published var currentIndex: Int = 0
     @Published var isFitToWindow: Bool = true
     @Published var isSlideshowPlaying: Bool = false
+    @Published var carouselVisible: Bool = true
+    /// Right-side settings panel visibility ('s')
+    @Published var settingsVisible: Bool = false
+    /// Random (shuffle) slideshow mode
+    @Published var randomMode: Bool = false
     
     private var slideshowTimer: Timer?
-    /// Slideshow interval in seconds (user-adjustable up to one decimal in Phase 3 UI)
+    /// Slideshow interval in seconds; user-editable to one decimal in the controls bar
     var slideshowInterval: Double = 2.0
     
     var currentImage: ImageInfo? {
@@ -25,12 +30,30 @@ class ImageStore: ObservableObject {
     
     func goToNext() {
         guard !images.isEmpty else { return }
-        currentIndex = (currentIndex + 1) % images.count
+        if randomMode && isSlideshowPlaying {
+            currentIndex = randomIndex(excluding: currentIndex)
+        } else {
+            currentIndex = (currentIndex + 1) % images.count
+        }
     }
     
     func goToPrevious() {
         guard !images.isEmpty else { return }
-        currentIndex = (currentIndex - 1 + images.count) % images.count
+        if randomMode && isSlideshowPlaying {
+            currentIndex = randomIndex(excluding: currentIndex)
+        } else {
+            currentIndex = (currentIndex - 1 + images.count) % images.count
+        }
+    }
+    
+    /// Random index in 0..<count that differs from `excluding`
+    private func randomIndex(excluding: Int) -> Int {
+        guard images.count > 1 else { return excluding }
+        var value = Int.random(in: 0..<images.count)
+        if value == excluding {
+            value = (value + 1) % images.count
+        }
+        return value
     }
     
     func toggleFitToWindow() {
@@ -48,12 +71,11 @@ class ImageStore: ObservableObject {
             }
         } else {
             guard let screen = window.screen ?? NSScreen.main else { return }
-            let third = CGSize(width: screen.frame.width / 3,
-                               height: screen.frame.height / 3)
-            var frame = NSRect(origin: .zero, size: third)
-            // Center on screen
-            frame.origin.x = screen.frame.midX - third.width / 2
-            frame.origin.y = screen.frame.midY - third.height / 2
+            let half = CGSize(width: screen.frame.width / 2,
+                               height: screen.frame.height / 2)
+            var frame = NSRect(origin: .zero, size: half)
+            frame.origin.x = screen.frame.midX - half.width / 2
+            frame.origin.y = screen.frame.midY - half.height / 2
             window.setFrame(frame, display: true, animate: true)
         }
     }
@@ -68,7 +90,7 @@ class ImageStore: ObservableObject {
         images[currentIndex].rotation = (images[currentIndex].rotation - 90 + 360).truncatingRemainder(dividingBy: 360)
     }
     
-    // MARK: - Slideshow (basic; timing input UI comes in Phase 3)
+    // MARK: - Slideshow
     
     func toggleSlideshow() {
         isSlideshowPlaying ? stopSlideshow() : startSlideshow()
@@ -90,7 +112,12 @@ class ImageStore: ObservableObject {
         slideshowTimer?.invalidate()
         slideshowTimer = Timer.scheduledTimer(withTimeInterval: slideshowInterval, repeats: false) { [weak self] _ in
             guard let self, self.isSlideshowPlaying else { return }
-            self.goToNext()
+            
+            if self.randomMode {
+                self.currentIndex = self.randomIndex(excluding: self.currentIndex)
+            } else {
+                self.goToNext()
+            }
             self.scheduleNextSlide()
         }
     }

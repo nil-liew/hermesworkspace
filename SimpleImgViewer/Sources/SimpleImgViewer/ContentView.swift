@@ -1,37 +1,45 @@
 import SwiftUI
 import AppKit
 
-/// Main content view with image display and controls
+/// Main content view — minimal chrome: no buttons, keyboard-driven.
+/// 's' toggles a settings panel on the right; 'p' toggles bottom carousel.
 struct ContentView: View {
     @StateObject private var store = ImageStore()
     @State private var showOpenPanel = false
-    @State private var sidebarVisible = false
-    @State private var isControlsVisible = true
     
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
             
             HStack(spacing: 0) {
-                // Main image display
-                mainImageSection
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                VStack(spacing: 0) {
+                    // Main image display
+                    mainImageSection
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    
+                    // Bottom thumbnail carousel (toggled with 'p')
+                    if store.carouselVisible {
+                        ThumbnailCarousel(store: store)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
+                .frame(maxWidth: .infinity)
                 
-                // Sidebar (collapsible)
-                if sidebarVisible {
-                    Divider()
-                        .frame(width: 1)
-                    ImageListPanel(store: store)
-                        .frame(width: 240)
+                // Right settings panel (toggled with 's')
+                if store.settingsVisible {
+                    SettingsPanel(store: store, showOpenPanel: $showOpenPanel)
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
             }
-        }
-        .overlay(alignment: .bottom) {
-            controlsBar
         }
         .overlay(alignment: .topLeading) {
             phaseIndicator
         }
+        .overlay(alignment: .topTrailing) {
+            slideshowBadge.padding(.trailing, store.settingsVisible ? 264 : 0)
+        }
+        .animation(.easeInOut(duration: 0.25), value: store.carouselVisible)
+        .animation(.easeInOut(duration: 0.25), value: store.settingsVisible)
         .fileImporter(
             isPresented: $showOpenPanel,
             allowedContentTypes: [.png, .jpeg, .heic, .heif, .tiff, .bmp, .gif],
@@ -43,30 +51,12 @@ struct ContentView: View {
             case .failure: break
             }
         }
-        .overlay(alignment: .topTrailing) {
-            if store.isSlideshowPlaying {
-                Text("▶ Slideshow  •  \(store.currentIndex + 1)/\(store.images.count)")
-                    .font(.caption)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Color.green.opacity(0.75))
-                    .foregroundColor(.white)
-                    .cornerRadius(6)
-                    .padding()
-            }
-        }
         .onAppear {
             setupKeyboardMonitor()
         }
-        .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.2)) {
-                isControlsVisible = hovering || sidebarVisible || store.isSlideshowPlaying
-            }
-        }
     }
     
-    // MARK: - Keyboard Event Monitor
-    // Correct macOS keycodes: o=31, p=35, 0=29, [ =33, ]=30, left=123, right=124
+    // MARK: - Keyboard Event Monitor (character-based matching)
     
     private func setupKeyboardMonitor() {
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
@@ -74,24 +64,22 @@ struct ContentView: View {
                 return event
             }
             
-            // Character-based matching (layout independent)
             if let chars = event.charactersIgnoringModifiers?.lowercased(), chars.count == 1 {
                 switch chars {
                 case "o":
                     showOpenPanel = true
-                    print("[SIV] open panel requested")
                     return nil
                 case "p":
-                    sidebarVisible.toggle()
-                    print("[SIV] sidebar -> \(sidebarVisible)")
+                    store.carouselVisible.toggle()
+                    return nil
+                case "s":
+                    store.settingsVisible.toggle()
                     return nil
                 case "0":
                     store.toggleFitToWindow()
-                    print("[SIV] isFitToWindow -> \(store.isFitToWindow)")
                     return nil
                 case " ":
                     store.toggleSlideshow()
-                    print("[SIV] slideshow -> \(store.isSlideshowPlaying)")
                     return nil
                 case "]":
                     store.rotateClockwise()
@@ -104,7 +92,6 @@ struct ContentView: View {
                 }
             }
             
-            // Arrow keys by keycode (characters are OS-specific escape codes)
             switch event.keyCode {
             case 123:
                 store.goToPrevious()
@@ -124,33 +111,12 @@ struct ContentView: View {
     private var mainImageSection: some View {
         GeometryReader { geo in
             if let info = store.currentImage, let nsImage = loadImage(info) {
-                let pixelSize = nsImage.pixelSize
-                ZStack {
-                    // Image always fits its viewer; only the viewer size changes with '0'
+                ZStack(alignment: .bottomTrailing) {
                     Image(nsImage: nsImage)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .rotationEffect(.degrees(info.rotation))
                         .frame(width: geo.size.width, height: geo.size.height)
-                    
-                    // Mode badge so the change is always visible
-                    VStack {
-                        Spacer()
-                        HStack {
-                            Spacer()
-                            Text(store.isFitToWindow
-                                 ? "FIT VIEWER • FULL SCREEN"
-                                 : "NORMAL VIEWER • 1/3 SCREEN")
-                                .font(.system(size: 11, weight: .medium))
-                                .monospacedDigit()
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color.black.opacity(0.6))
-                                .foregroundColor(.white)
-                                .cornerRadius(4)
-                                .padding(12)
-                        }
-                    }
                 }
             } else {
                 emptyState
@@ -162,45 +128,25 @@ struct ContentView: View {
         }
     }
     
-    // MARK: - Controls Bar
+    // MARK: - Slideshow Badge
     
-    private var controlsBar: some View {
-        HStack(spacing: 16) {
-            Button("◀ Prev") {
-                store.goToPrevious()
+    @ViewBuilder
+    private var slideshowBadge: some View {
+        if store.isSlideshowPlaying {
+            HStack(spacing: 5) {
+                Image(systemName: store.randomMode ? "dice" : "play.fill")
+                    .font(.system(size: 9))
+                Text("\(String(format: "%.1f", store.slideshowInterval))s \(store.randomMode ? "random" : "")")
+                    .monospacedDigit()
             }
-            
-            Button(store.isSlideshowPlaying ? "⏸ Pause" : "▶ Play") {
-                store.toggleSlideshow()
-            }
-            
-            Button("Next ▶") {
-                store.goToNext()
-            }
-            
-            Spacer()
-            
-            Button("↺") {
-                store.rotateCounterClockwise()
-            }
-            Button("↻") {
-                store.rotateClockwise()
-            }
-            
-            Button(store.isFitToWindow ? "1:1" : "Fit") {
-                store.toggleFitToWindow()
-            }
-            
-            Button("☰") {
-                sidebarVisible.toggle()
-            }
+            .font(.caption)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Color.orange.opacity(0.8))
+            .foregroundColor(.black)
+            .cornerRadius(6)
+            .padding()
         }
-        .font(.system(size: 12))
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
-        .background(Color.black.opacity(0.7))
-        .opacity(isControlsVisible ? 1 : 0)
-        .animation(.easeInOut(duration: 0.2), value: isControlsVisible)
     }
     
     // MARK: - Empty State
@@ -211,27 +157,25 @@ struct ContentView: View {
                 .font(.system(size: 64))
                 .foregroundColor(.white.opacity(0.3))
             
-            Text("Drop images here or press 'o' to open")
+            Text("Drop images here to start")
                 .font(.title2)
                 .foregroundColor(.white.opacity(0.5))
             
             Text("Supports PNG, JPG, HEIC, GIF, and more")
                 .font(.caption)
                 .foregroundColor(.white.opacity(0.3))
-            
-            Text("Shortcuts: o=open, p=sidebar, ←→=navigate, ]/[=rotate, 0=normal/fit")
-                .font(.caption)
-                .foregroundColor(.white.opacity(0.2))
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
     // MARK: - Phase Indicator (Testing)
     
     private var phaseIndicator: some View {
-        Text("Phase 1: Core Display")
+        Text("Phase 3b: Minimal UI + Settings Panel ('s')")
             .font(.caption)
-            .padding(4)
-            .background(Color.orange.opacity(0.8))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color.purple.opacity(0.8))
             .foregroundColor(.white)
             .cornerRadius(4)
             .padding()
