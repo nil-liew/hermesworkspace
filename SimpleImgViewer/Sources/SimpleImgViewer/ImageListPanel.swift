@@ -81,41 +81,47 @@ struct SettingsPanel: View {
     }
 }
 
-/// Bottom carousel of thumbnails; current selection highlighted and auto-scrolled
+/// Bottom carousel of thumbnails; highlighted thumbnail always kept centered
 struct ThumbnailCarousel: View {
     @ObservedObject var store: ImageStore
     
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(store.images.indices, id: \.self) { index in
-                        ThumbnailCell(
-                            info: store.images[index],
-                            isSelected: index == store.currentIndex
-                        )
-                        .id(index)
-                        .onTapGesture {
-                            withAnimation(.easeInOut(duration: 0.15)) {
-                                store.currentIndex = index
+        GeometryReader { geo in
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(store.images.indices, id: \.self) { index in
+                            ThumbnailCell(
+                                info: store.images[index],
+                                isSelected: index == store.currentIndex
+                            )
+                            .id(index)
+                            .onTapGesture {
+                                withAnimation(.easeInOut(duration: 0.15)) {
+                                    store.currentIndex = index
+                                }
                             }
                         }
                     }
+                    // Half-viewport side insets let first/last thumbnails reach mid-carousel
+                    .padding(.horizontal, max(geo.size.width / 2 - 36, 16))
+                    .padding(.vertical, 12)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-            }
-            .background(
-                Color.black.opacity(0.85)
-                    .overlay(Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1), alignment: .top)
-            )
-            .frame(height: 96)
-            .onChange(of: store.currentIndex) { newIndex in
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    proxy.scrollTo(newIndex, anchor: .center)
+                .background(
+                    Color.black.opacity(0.85)
+                        .overlay(Rectangle().fill(Color.white.opacity(0.1)).frame(height: 1), alignment: .top)
+                )
+                .onChange(of: store.currentIndex) { newIndex in
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        proxy.scrollTo(newIndex, anchor: .center)
+                    }
+                }
+                .onAppear {
+                    proxy.scrollTo(store.currentIndex, anchor: .center)
                 }
             }
         }
+        .frame(height: 96)
     }
 }
 

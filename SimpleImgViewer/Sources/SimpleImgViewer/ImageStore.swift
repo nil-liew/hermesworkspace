@@ -23,10 +23,11 @@ class ImageStore: ObservableObject {
     
     func loadImages(from urls: [URL]) {
         let newImages = urls.map { ImageInfo(url: $0, rotation: 0.0) }
+        guard !newImages.isEmpty else { return }
+        let firstNewIndex = images.count
         images.append(contentsOf: newImages)
-        if images.count == newImages.count {
-            currentIndex = 0
-        }
+        // Jump to first newly added image so the drop is visibly acknowledged
+        currentIndex = firstNewIndex
     }
     
     func goToNext() {

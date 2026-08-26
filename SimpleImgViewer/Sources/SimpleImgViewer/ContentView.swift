@@ -14,9 +14,14 @@ struct ContentView: View {
             
             HStack(spacing: 0) {
                 VStack(spacing: 0) {
-                    // Main image display
-                    mainImageSection
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    // Main image display (AppKit-level drop zone for reliable repeat drops)
+                    FileDropZone(onDrop: { urls in
+                        print("[SIV] loadImages called with \(urls.count)")
+                        store.loadImages(from: urls)
+                    }) {
+                        mainImageSection
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     
                     // Bottom thumbnail carousel (toggled with 'p')
                     if store.carouselVisible {
@@ -129,10 +134,6 @@ struct ContentView: View {
             } else {
                 emptyState
             }
-        }
-        .dropDestination(for: URL.self) { urls, _ in
-            store.loadImages(from: urls)
-            return true
         }
     }
     
