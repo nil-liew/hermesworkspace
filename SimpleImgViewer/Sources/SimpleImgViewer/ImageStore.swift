@@ -1,4 +1,5 @@
 import SwiftUI
+import ImageIO
 
 /// ViewModel managing the image viewer state
 class ImageStore: ObservableObject {
@@ -127,4 +128,12 @@ struct ImageInfo: Identifiable {
     let id = UUID()
     let url: URL
     var rotation: Double
+    
+    /// True if the file has multiple frames (animated GIF / animated WebP)
+    static func isAnimated(_ url: URL) -> Bool {
+        let ext = url.pathExtension.lowercased()
+        guard ext == "gif" || ext == "webp" else { return false }
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return false }
+        return CGImageSourceGetCount(source) > 1
+    }
 }

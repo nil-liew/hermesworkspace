@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 
 /// Main content view — minimal chrome: no buttons, keyboard-driven.
 /// 's' toggles a settings panel on the right; 'p' toggles bottom carousel.
@@ -42,7 +43,8 @@ struct ContentView: View {
         .animation(.easeInOut(duration: 0.25), value: store.settingsVisible)
         .fileImporter(
             isPresented: $showOpenPanel,
-            allowedContentTypes: [.png, .jpeg, .heic, .heif, .tiff, .bmp, .gif],
+            allowedContentTypes: [.png, .jpeg, .heic, .heif, .tiff, .bmp, .gif,
+                                   UTType(filenameExtension: "webp") ?? .data],
             allowsMultipleSelection: true
         ) { result in
             switch result {
@@ -110,13 +112,19 @@ struct ContentView: View {
     @ViewBuilder
     private var mainImageSection: some View {
         GeometryReader { geo in
-            if let info = store.currentImage, let nsImage = loadImage(info) {
-                ZStack(alignment: .bottomTrailing) {
+            if let info = store.currentImage {
+                if ImageInfo.isAnimated(info.url) {
+                    // Animated GIF / animated WebP playback via ImageIO
+                    AnimatedImagePlayerView(url: info.url, rotation: info.rotation)
+                        .frame(width: geo.size.width, height: geo.size.height)
+                } else if let nsImage = loadImage(info) {
                     Image(nsImage: nsImage)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .rotationEffect(.degrees(info.rotation))
                         .frame(width: geo.size.width, height: geo.size.height)
+                } else {
+                    emptyState
                 }
             } else {
                 emptyState
