@@ -126,6 +126,9 @@ struct ContentView: View {
                 case "v":
                     voice.toggle()
                     return nil
+                case "z":
+                    toggleZoomAtCursor()
+                    return nil
                 case "0":
                     store.toggleFitToWindow()
                     return nil
@@ -161,24 +164,62 @@ struct ContentView: View {
     @ViewBuilder
     private var mainImageSection: some View {
         GeometryReader { geo in
-            if let info = store.currentImage {
-                if ImageInfo.isAnimated(info.url) {
-                    // Animated GIF / animated WebP playback via ImageIO
-                    AnimatedImagePlayerView(url: info.url, rotation: info.rotation)
-                        .frame(width: geo.size.width, height: geo.size.height)
-                } else if let nsImage = loadImage(info) {
-                    Image(nsImage: nsImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .rotationEffect(.degrees(info.rotation))
-                        .frame(width: geo.size.width, height: geo.size.height)
+            let zoomed = store.zoomScale > 1.0
+            Group {
+                if let info = store.currentImage {
+                    if ImageInfo.isAnimated(info.url) {
+                        // Animated GIF / animated WebP playback via ImageIO
+                        AnimatedImagePlayerView(url: info.url, rotation: info.rotation)
+                            .frame(width: geo.size.width, height: geo.size.height)
+                            .scaleEffect(store.zoomScale)
+                            .offset(store.zoomOffset)
+                            .clipped()
+                    } else if let nsImage = loadImage(info) {
+                        Image(nsImage: nsImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .rotationEffect(.degrees(info.rotation))
+                            .frame(width: geo.size.width, height: geo.size.height)
+                            .scaleEffect(store.zoomScale)
+                            .offset(store.zoomOffset)
+                            .clipped()
+                    } else {
+                        emptyState
+                    }
                 } else {
                     emptyState
                 }
-            } else {
-                emptyState
             }
+            .animation(.easeInOut(duration: 0.2), value: store.zoomScale)
         }
+    }
+    
+    // MARK: - Zoom ('z' toggles 2x centered at cursor)
+    
+    private func toggleZoomAtCursor() {
+        guard let window = NSApp.keyWindow ?? NSApp.windows.first(where: { $0.isVisible }) else { return }
+        
+        // Cursor position in window coordinates, top-left origin (matches SwiftUI)
+        let mouse = NSEvent.mouseLocation
+        let frame = window.frame
+        let localX = mouse.x - frame.origin.x
+        let localY = (frame.origin.y + frame.height) - mouse.y
+        
+        // Cycle zoom levels: 1x -> 2x -> 4x -> 1x
+        let nextScale: Double
+        switch store.zoomScale {
+        case ..<1.5: nextScale = 2.0
+        case ..<3.0: nextScale = 4.0
+        default:     store.resetZoom(); return
+        }
+        
+        // Offset from window center; keep the cursor point stationary under the scale
+        let cx = frame.width / 2
+        let cy = frame.height / 2
+        let k = nextScale - 1.0
+        store.setZoom(nextScale,
+                      offsetX: -(localX - cx) * k,
+                      offsetY: -(localY - cy) * k)
     }
     
     // MARK: - Slideshow Badge

@@ -7,13 +7,28 @@ class ImageStore: ObservableObject {
     @Published var currentIndex: Int = 0
     @Published var isFitToWindow: Bool = true
     @Published var isSlideshowPlaying: Bool = false
-    @Published var carouselVisible: Bool = true
+    @Published var carouselVisible: Bool = false
     /// Right-side settings panel visibility ('s')
     @Published var settingsVisible: Bool = false
     /// Auto-orientation scan results applied via setOrientation
     private(set) var orientationMap: [UUID: Orientation] = [:]
     /// Random (shuffle) slideshow mode
     @Published var randomMode: Bool = false
+    
+    // MARK: - Zoom state ('z' toggles 2x at cursor)
+    @Published var zoomScale: Double = 1.0
+    @Published var zoomOffset: CGSize = .zero
+    let defaultZoomScale: Double = 2.0
+    
+    func setZoom(_ scale: Double, offsetX: Double, offsetY: Double) {
+        zoomScale = scale
+        zoomOffset = CGSize(width: offsetX, height: offsetY)
+    }
+    
+    func resetZoom() {
+        zoomScale = 1.0
+        zoomOffset = .zero
+    }
     
     private var slideshowTimer: Timer?
     /// Slideshow interval in seconds; user-editable to one decimal in the controls bar
@@ -30,6 +45,8 @@ class ImageStore: ObservableObject {
         images.append(contentsOf: newImages)
         // Jump to first newly added image so the drop is visibly acknowledged
         currentIndex = firstNewIndex
+        // Show carousel automatically once images are loaded
+        if !carouselVisible { carouselVisible = true }
     }
     
     func goToNext() {
@@ -96,12 +113,20 @@ class ImageStore: ObservableObject {
     
     func rotateClockwise() {
         guard images.indices.contains(currentIndex) else { return }
-        images[currentIndex].rotation = (images[currentIndex].rotation + 90).truncatingRemainder(dividingBy: 360)
+        let url = images[currentIndex].url
+        // Persist to source file (static images only); reset viewer rotation since
+        // the file itself is now rotated
+        FileRotator.rotateFile(at: url, clockwise: true)
+        images[currentIndex].rotation = 0
+        objectWillChange.send()
     }
     
     func rotateCounterClockwise() {
         guard images.indices.contains(currentIndex) else { return }
-        images[currentIndex].rotation = (images[currentIndex].rotation - 90 + 360).truncatingRemainder(dividingBy: 360)
+        let url = images[currentIndex].url
+        FileRotator.rotateFile(at: url, clockwise: false)
+        images[currentIndex].rotation = 0
+        objectWillChange.send()
     }
     
     // MARK: - Slideshow

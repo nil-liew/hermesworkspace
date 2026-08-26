@@ -89,7 +89,7 @@ struct SettingsPanel: View {
             
             Spacer()
             
-            Text("Shortcuts\no open · p carousel · s settings\n←→ navigate · [ ] rotate\n0 viewer size · Space slideshow")
+            Text("Shortcuts\no open · p carousel · s settings · v voice\n←→ navigate · [ ] rotate · 0 viewer size\nSpace slideshow · z zoom 2x at cursor")
                 .font(.caption2)
                 .foregroundColor(.white.opacity(0.35))
                 .lineSpacing(3)
