@@ -6,6 +6,7 @@ struct SettingsPanel: View {
     @Binding var showOpenPanel: Bool
     @StateObject private var detector = OrientationDetector()
     @State private var timingText: String = "2.0"
+    @Binding var showCheatsheet: Bool
     
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -26,16 +27,6 @@ struct SettingsPanel: View {
                     .font(.system(size: 13, design: .monospaced))
                     .frame(width: 100)
                     .onSubmit(commitTiming)
-                
-                if let val = Double(timingText), val >= 0.1 {
-                    Text("next slide in \(String(format: "%.1f", val))s")
-                        .font(.caption2)
-                        .foregroundColor(.white.opacity(0.4))
-                } else {
-                    Text("min 0.1s")
-                        .font(.caption2)
-                        .foregroundColor(.orange)
-                }
             }
             
             // Random mode
@@ -89,10 +80,19 @@ struct SettingsPanel: View {
             
             Spacer()
             
-            Text("Shortcuts\no open · p carousel · s settings · v voice\n←→ navigate · [ ] rotate · 0 viewer size\nSpace slideshow · z zoom 2x at cursor")
-                .font(.caption2)
-                .foregroundColor(.white.opacity(0.35))
-                .lineSpacing(3)
+            // ⓘ button — reveals full shortcuts cheatsheet
+            HStack(alignment: .bottom) {
+                Spacer()
+                Button {
+                    showCheatsheet = true
+                } label: {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 15))
+                        .foregroundColor(.white.opacity(0.5))
+                }
+                .buttonStyle(.plain)
+                .help("Show all shortcuts")
+            }
         }
         .padding(20)
         .frame(width: 240)
@@ -110,6 +110,72 @@ struct SettingsPanel: View {
         } else {
             timingText = String(format: "%.1f", store.slideshowInterval)
         }
+    }
+}
+
+/// Full shortcuts cheatsheet — SimpleVidPlayer style overlay
+struct ShortcutsCheatsheet: View {
+    private struct Row: Identifiable {
+        let id = UUID()
+        let keys: String
+        let action: String
+    }
+    
+    private let rows: [Row] = [
+        .init(keys: "o", action: "Open images"),
+        .init(keys: "c", action: "Toggle carousel panel"),
+        .init(keys: "s", action: "Toggle settings panel"),
+        .init(keys: "v", action: "Voice commands (next / previous)"),
+        .init(keys: "← / →", action: "Previous / next image"),
+        .init(keys: "[ / ]", action: "Rotate CCW / CW (saves to file)"),
+        .init(keys: "0", action: "Viewer size: ½ screen ↔ full screen"),
+        .init(keys: "Space", action: "Slideshow play/pause"),
+        .init(keys: "z", action: "Zoom cycle 1× → 2× → 4× at cursor"),
+    ]
+    
+    private func rowView(_ row: Row) -> some View {
+        HStack(spacing: 12) {
+            Text(row.keys)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(Color(red: 1.0, green: 0.77, blue: 0.5))
+                .frame(width: 130, alignment: .trailing)
+            Text(row.action)
+                .font(.system(size: 12))
+                .foregroundColor(.white.opacity(0.85))
+            Spacer()
+        }
+    }
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            Text("Keyboard Shortcuts")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(.white)
+                .padding(.vertical, 10)
+            Divider()
+                .overlay(Color.white.opacity(0.15))
+            VStack(alignment: .leading, spacing: 7) {
+                ForEach(rows) { row in
+                    rowView(row)
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 14)
+            Text("press s or click ⓘ to close")
+                .font(.system(size: 10))
+                .foregroundColor(.white.opacity(0.45))
+                .padding(.bottom, 10)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.black.opacity(0.92))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.white.opacity(0.15))
+        )
+        .shadow(radius: 20)
+        .padding(30)
     }
 }
 

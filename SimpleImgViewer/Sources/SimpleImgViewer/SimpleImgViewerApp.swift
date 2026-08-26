@@ -4,11 +4,9 @@ import AppKit
 @main
 struct SimpleImgViewerApp: App {
     var body: some Scene {
-        WindowGroup {
+        WindowGroup("SimpleImgViewer") {
             ContentView()
         }
-        .windowStyle(.hiddenTitleBar)
-        .windowToolbarStyle(.unified)
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button("Open Image...") {

@@ -8,33 +8,48 @@ struct ContentView: View {
     @StateObject private var store = ImageStore()
     @StateObject private var voice = VoiceController()
     @State private var showOpenPanel = false
+    @State private var showCheatsheet = false
     
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
             
             HStack(spacing: 0) {
-                VStack(spacing: 0) {
-                    // Main image display (AppKit-level drop zone for reliable repeat drops)
-                    FileDropZone(onDrop: { urls in
-                        print("[SIV] loadImages called with \(urls.count)")
-                        store.loadImages(from: urls)
-                    }) {
-                        mainImageSection
+                ZStack {
+                    VStack(spacing: 0) {
+                        // Main image display (AppKit-level drop zone for reliable repeat drops)
+                        FileDropZone(onDrop: { urls in
+                            print("[SIV] loadImages called with \(urls.count)")
+                            store.loadImages(from: urls)
+                        }) {
+                            mainImageSection
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        
+                        // Bottom thumbnail carousel (toggled with 'p')
+                        if store.carouselVisible {
+                            ThumbnailCarousel(store: store)
+                                .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     
-                    // Bottom thumbnail carousel (toggled with 'p')
-                    if store.carouselVisible {
-                        ThumbnailCarousel(store: store)
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    // Cheatsheet overlays ONLY the viewer area — settings panel stays fully visible
+                    if showCheatsheet {
+                        ZStack {
+                            Color.black.opacity(0.55)
+                                .onTapGesture { showCheatsheet = false }
+                            
+                            ShortcutsCheatsheet()
+                                .transition(.opacity)
+                        }
+                        .transition(.opacity)
                     }
                 }
                 .frame(maxWidth: .infinity)
                 
                 // Right settings panel (toggled with 's')
                 if store.settingsVisible {
-                    SettingsPanel(store: store, showOpenPanel: $showOpenPanel)
+                    SettingsPanel(store: store, showOpenPanel: $showOpenPanel, showCheatsheet: $showCheatsheet)
                         .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
             }
@@ -117,7 +132,7 @@ struct ContentView: View {
                 case "o":
                     showOpenPanel = true
                     return nil
-                case "p":
+                case "c":
                     store.carouselVisible.toggle()
                     return nil
                 case "s":
@@ -125,6 +140,9 @@ struct ContentView: View {
                     return nil
                 case "v":
                     voice.toggle()
+                    return nil
+                case "i":
+                    showCheatsheet.toggle()
                     return nil
                 case "z":
                     toggleZoomAtCursor()
