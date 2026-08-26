@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 /// 's' toggles a settings panel on the right; 'p' toggles bottom carousel.
 struct ContentView: View {
     @StateObject private var store = ImageStore()
+    @StateObject private var voice = VoiceController()
     @State private var showOpenPanel = false
     
     var body: some View {
@@ -42,7 +43,45 @@ struct ContentView: View {
             phaseIndicator
         }
         .overlay(alignment: .topTrailing) {
-            slideshowBadge.padding(.trailing, store.settingsVisible ? 264 : 0)
+            // Voice status badge (top-right, above slideshow badge)
+            if voice.isListening {
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 8, height: 8)
+                    Text(voice.statusText.isEmpty ? "Listening…" : voice.statusText)
+                        .font(.caption)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.black.opacity(0.75))
+                .foregroundColor(.white)
+                .cornerRadius(14)
+            }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            VStack(alignment: .trailing, spacing: 10) {
+                if store.isSlideshowPlaying {
+                    HStack(spacing: 5) {
+                        Image(systemName: store.randomMode ? "dice" : "play.fill")
+                            .font(.system(size: 9))
+                        Text("\(String(format: "%.1f", store.slideshowInterval))s \(store.randomMode ? "random" : "")")
+                            .monospacedDigit()
+                    }
+                    .font(.caption)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Color.orange.opacity(0.8))
+                    .foregroundColor(.black)
+                    .cornerRadius(6)
+                }
+                
+                Text(voice.statusText)
+                    .font(.caption2)
+                    .foregroundColor(.white.opacity(0.7))
+                    .padding(.horizontal, 8)
+            }
+            .padding(.trailing, store.settingsVisible ? 264 : 16)
         }
         .animation(.easeInOut(duration: 0.25), value: store.carouselVisible)
         .animation(.easeInOut(duration: 0.25), value: store.settingsVisible)
@@ -60,6 +99,8 @@ struct ContentView: View {
         }
         .onAppear {
             setupKeyboardMonitor()
+            voice.onNext = { store.goToNext() }
+            voice.onPrevious = { store.goToPrevious() }
         }
     }
     
@@ -81,6 +122,9 @@ struct ContentView: View {
                     return nil
                 case "s":
                     store.settingsVisible.toggle()
+                    return nil
+                case "v":
+                    voice.toggle()
                     return nil
                 case "0":
                     store.toggleFitToWindow()

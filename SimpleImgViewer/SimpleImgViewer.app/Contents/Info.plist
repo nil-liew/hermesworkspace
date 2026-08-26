@@ -22,6 +22,10 @@
     <string>12.0</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>SimpleImgViewer uses speech recognition to understand "next" and "previous" voice commands.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>SimpleImgViewer needs microphone access to hear your "next" and "previous" commands.</string>
     <key>LSUIElement</key>
     <false/>
 </dict>
