@@ -10,6 +10,8 @@ class ImageStore: ObservableObject {
     @Published var carouselVisible: Bool = true
     /// Right-side settings panel visibility ('s')
     @Published var settingsVisible: Bool = false
+    /// Auto-orientation scan results applied via setOrientation
+    private(set) var orientationMap: [UUID: Orientation] = [:]
     /// Random (shuffle) slideshow mode
     @Published var randomMode: Bool = false
     
@@ -56,6 +58,16 @@ class ImageStore: ObservableObject {
             value = (value + 1) % images.count
         }
         return value
+    }
+    
+    /// Apply detected orientation + corrective rotation for a given image
+    func setOrientation(id: UUID, orientation: Orientation, rotationDegrees: Double = 0) {
+        orientationMap[id] = orientation
+        if let idx = images.firstIndex(where: { $0.id == id }) {
+            images[idx].orientation = orientation
+            images[idx].rotation = rotationDegrees
+        }
+        objectWillChange.send()
     }
     
     func toggleFitToWindow() {
@@ -125,10 +137,26 @@ class ImageStore: ObservableObject {
     }
 }
 
+enum Orientation: String, Codable {
+    case portrait, landscape, square, unknown
+    
+    var icon: String {
+        switch self {
+        case .portrait: return "iphone"
+        case .landscape: return "laptopcomputer"
+        case .square: return "square.dashed"
+        case .unknown: return "questionmark.square.dashed"
+        }
+    }
+    
+    var label: String { rawValue.capitalized }
+}
+
 struct ImageInfo: Identifiable {
     let id = UUID()
     let url: URL
     var rotation: Double
+    var orientation: Orientation = .unknown
     
     /// True if the file has multiple frames (animated GIF / animated WebP)
     static func isAnimated(_ url: URL) -> Bool {

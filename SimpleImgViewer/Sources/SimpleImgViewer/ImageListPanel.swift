@@ -4,6 +4,7 @@ import SwiftUI
 struct SettingsPanel: View {
     @ObservedObject var store: ImageStore
     @Binding var showOpenPanel: Bool
+    @StateObject private var detector = OrientationDetector()
     @State private var timingText: String = "2.0"
     
     var body: some View {
@@ -44,6 +45,37 @@ struct SettingsPanel: View {
                     .foregroundColor(.white)
             }
             .toggleStyle(.checkbox)
+            
+            Divider()
+            
+            // Auto-orientate scan
+            VStack(alignment: .leading, spacing: 8) {
+                Button {
+                    detector.scanAll(images: store.images, store: store)
+                } label: {
+                    HStack(spacing: 6) {
+                        if detector.isScanning {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                        }
+                        Text(detector.isScanning ? "Scanning…" : "Auto-orientate")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .disabled(store.images.isEmpty || detector.isScanning)
+                
+                if detector.isScanning {
+                    ProgressView(value: detector.progress)
+                    
+                    let done = Int((detector.progress * Double(store.images.count)).rounded())
+                    Text("\(done)/\(store.images.count)")
+                        .font(.caption2)
+                        .foregroundColor(.white.opacity(0.4))
+                        .monospacedDigit()
+                }
+            }
             
             Divider()
             
@@ -147,6 +179,22 @@ struct ThumbnailCell: View {
                         Image(systemName: "photo")
                             .foregroundColor(.white.opacity(0.3))
                     )
+            }
+        }
+        .overlay(alignment: .bottomLeading) {
+            if info.orientation != .unknown {
+                HStack(spacing: 2) {
+                    Image(systemName: info.orientation.icon)
+                        .font(.system(size: 7, weight: .bold))
+                    Text(info.orientation.rawValue.prefix(4).capitalized)
+                        .font(.system(size: 7, weight: .semibold))
+                }
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
+                .background(Color.black.opacity(0.7))
+                .foregroundColor(.white)
+                .cornerRadius(3)
+                .padding(3)
             }
         }
         .overlay(
