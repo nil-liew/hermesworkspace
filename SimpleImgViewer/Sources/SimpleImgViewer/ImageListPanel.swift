@@ -16,7 +16,6 @@ struct SettingsPanel: View {
             
             Divider()
             
-            // Slide timing
             VStack(alignment: .leading, spacing: 8) {
                 Text("Slide interval (seconds)")
                     .font(.caption)
@@ -29,7 +28,6 @@ struct SettingsPanel: View {
                     .onSubmit(commitTiming)
             }
             
-            // Random mode
             Toggle(isOn: $store.randomMode) {
                 Text("Random play")
                     .font(.subheadline)
@@ -39,7 +37,6 @@ struct SettingsPanel: View {
             
             Divider()
             
-            // Auto-orientate scan
             VStack(alignment: .leading, spacing: 8) {
                 Button {
                     detector.scanAll(images: store.images, store: store)
@@ -70,7 +67,6 @@ struct SettingsPanel: View {
             
             Divider()
             
-            // File actions
             Button {
                 showOpenPanel = true
             } label: {
@@ -80,7 +76,6 @@ struct SettingsPanel: View {
             
             Spacer()
             
-            // ⓘ button — reveals full shortcuts cheatsheet
             HStack(alignment: .bottom) {
                 Spacer()
                 Button {
@@ -113,7 +108,7 @@ struct SettingsPanel: View {
     }
 }
 
-/// Full shortcuts cheatsheet — SimpleVidPlayer style overlay
+/// Full shortcuts cheatsheet
 struct ShortcutsCheatsheet: View {
     private struct Row: Identifiable {
         let id = UUID()
@@ -191,17 +186,23 @@ struct ThumbnailCarousel: View {
                         ForEach(store.images.indices, id: \.self) { index in
                             ThumbnailCell(
                                 info: store.images[index],
-                                isSelected: index == store.currentIndex
+                                isSelected: index == store.currentIndex,
+                                isInSelection: store.selectedIndices.contains(index)
                             )
                             .id(index)
+                            .contentShape(Rectangle())
                             .onTapGesture {
                                 withAnimation(.easeInOut(duration: 0.15)) {
-                                    store.currentIndex = index
+                                    let flags = NSEvent.modifierFlags
+                                    if flags.contains(.shift) {
+                                        store.shiftSelect(index: index)
+                                    } else {
+                                        store.clickSelect(index: index)
+                                    }
                                 }
                             }
                         }
                     }
-                    // Half-viewport side insets let first/last thumbnails reach mid-carousel
                     .padding(.horizontal, max(geo.size.width / 2 - 36, 16))
                     .padding(.vertical, 12)
                 }
@@ -226,6 +227,7 @@ struct ThumbnailCarousel: View {
 struct ThumbnailCell: View {
     let info: ImageInfo
     let isSelected: Bool
+    var isInSelection: Bool = false
     
     var body: some View {
         Group {
@@ -266,12 +268,13 @@ struct ThumbnailCell: View {
         .overlay(
             RoundedRectangle(cornerRadius: 8)
                 .stroke(
-                    isSelected ? Color.orange : Color.white.opacity(0.15),
-                    lineWidth: isSelected ? 3 : 1
+                    (isSelected || isInSelection) ? Color.orange : Color.white.opacity(0.15),
+                    lineWidth: (isSelected || isInSelection) ? 3 : 1
                 )
         )
         .cornerRadius(8)
-        .scaleEffect(isSelected ? 1.06 : 1.0)
+        .scaleEffect(isSelected ? 1.06 : (isInSelection ? 1.02 : 1.0))
         .animation(.easeInOut(duration: 0.15), value: isSelected)
+        .animation(.easeInOut(duration: 0.15), value: isInSelection)
     }
 }

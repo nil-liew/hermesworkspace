@@ -3,21 +3,18 @@ import AppKit
 
 @main
 struct SimpleImgViewerApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    
     var body: some Scene {
         WindowGroup("SimpleImgViewer") {
             ContentView()
         }
-        .commands {
-            CommandGroup(replacing: .newItem) {
-                Button("Open Image...") {
-                    NotificationCenter.default.post(name: .openImage, object: nil)
-                }
-                .keyboardShortcut("o", modifiers: .command)
-            }
-        }
+        .windowStyle(.hiddenTitleBar)
     }
 }
 
-extension Notification.Name {
-    static let openImage = Notification.Name("simpleImgViewerOpenImage")
+class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        return true
+    }
 }

@@ -2,31 +2,19 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleDevelopmentRegion</key>
-    <string>en</string>
     <key>CFBundleExecutable</key>
     <string>SimpleImgViewer</string>
     <key>CFBundleIdentifier</key>
-    <string>com.simpleimgviewer.app</string>
-    <key>CFBundleInfoDictionaryVersion</key>
-    <string>6.0</string>
+    <string>com.daddy.SimpleImgViewer</string>
     <key>CFBundleName</key>
     <string>SimpleImgViewer</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
+    <key>CFBundleVersion</key>
+    <string>1.0</string>
     <key>CFBundleShortVersionString</key>
     <string>1.0</string>
-    <key>CFBundleVersion</key>
-    <string>1</string>
     <key>LSMinimumSystemVersion</key>
-    <string>12.0</string>
+    <string>13.0</string>
     <key>NSHighResolutionCapable</key>
     <true/>
-    <key>NSSpeechRecognitionUsageDescription</key>
-    <string>SimpleImgViewer uses speech recognition to understand "next" and "previous" voice commands.</string>
-    <key>NSMicrophoneUsageDescription</key>
-    <string>SimpleImgViewer needs microphone access to hear your "next" and "previous" commands.</string>
-    <key>LSUIElement</key>
-    <false/>
 </dict>
 </plist>

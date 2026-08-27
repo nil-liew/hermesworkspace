@@ -14,6 +14,10 @@ class ImageStore: ObservableObject {
     private(set) var orientationMap: [UUID: Orientation] = [:]
     /// Random (shuffle) slideshow mode
     @Published var randomMode: Bool = false
+    /// Carousel multi-selection (shift-click range) for batch rotation
+    @Published var selectedIndices: Set<Int> = []
+    /// Anchor for shift-click range selection
+    var shiftAnchor: Int = 0
     
     // MARK: - Zoom state ('z' toggles 2x at cursor)
     @Published var zoomScale: Double = 1.0
@@ -45,25 +49,57 @@ class ImageStore: ObservableObject {
         images.append(contentsOf: newImages)
         // Jump to first newly added image so the drop is visibly acknowledged
         currentIndex = firstNewIndex
+        selectedIndices = [firstNewIndex]
+        shiftAnchor = firstNewIndex
         // Show carousel automatically once images are loaded
         if !carouselVisible { carouselVisible = true }
     }
     
-    func goToNext() {
-        guard !images.isEmpty else { return }
-        if randomMode && isSlideshowPlaying {
-            currentIndex = randomIndex(excluding: currentIndex)
-        } else {
-            currentIndex = (currentIndex + 1) % images.count
-        }
+    /// Shift-click: select the contiguous range between anchor and clicked index.
+    func shiftSelect(index: Int) {
+        guard images.indices.contains(index) else { return }
+        let lo = min(shiftAnchor, index)
+        let hi = max(shiftAnchor, index)
+        selectedIndices = Set(lo...hi)
+        objectWillChange.send()
     }
     
-    func goToPrevious() {
+    /// Plain click: single selection, also navigates viewer to that image
+    func clickSelect(index: Int) {
+        guard images.indices.contains(index) else { return }
+        currentIndex = index
+        selectedIndices = [index]
+        shiftAnchor = index
+        objectWillChange.send()
+    }
+    
+    func goToNext(shift: Bool = false) {
         guard !images.isEmpty else { return }
-        if randomMode && isSlideshowPlaying {
-            currentIndex = randomIndex(excluding: currentIndex)
+        if shift && !selectedIndices.isEmpty {
+            // Shift+arrow: extend selection to next image (keep anchor, add new)
+            let nextIdx = (currentIndex + 1) % images.count
+            shiftSelect(index: nextIdx)
+            currentIndex = nextIdx
         } else {
+            // Normal navigation: clear selection first, then move
+            currentIndex = (currentIndex + 1) % images.count
+            selectedIndices = [currentIndex]
+            shiftAnchor = currentIndex
+        }
+    }
+
+    func goToPrevious(shift: Bool = false) {
+        guard !images.isEmpty else { return }
+        if shift && !selectedIndices.isEmpty {
+            // Shift+arrow: extend selection to previous image (keep anchor, add new)
+            let prevIdx = (currentIndex - 1 + images.count) % images.count
+            shiftSelect(index: prevIdx)
+            currentIndex = prevIdx
+        } else {
+            // Normal navigation: clear selection first, then move
             currentIndex = (currentIndex - 1 + images.count) % images.count
+            selectedIndices = [currentIndex]
+            shiftAnchor = currentIndex
         }
     }
     
@@ -111,21 +147,28 @@ class ImageStore: ObservableObject {
         }
     }
     
+    /// Indices to rotate: multi-selection if any, else current image
+    private var rotationTargets: [Int] {
+        selectedIndices.filter { images.indices.contains($0) }.sorted()
+    }
+    
     func rotateClockwise() {
-        guard images.indices.contains(currentIndex) else { return }
-        let url = images[currentIndex].url
-        // Persist to source file (static images only); reset viewer rotation since
-        // the file itself is now rotated
-        FileRotator.rotateFile(at: url, clockwise: true)
-        images[currentIndex].rotation = 0
+        let targets = rotationTargets
+        guard !targets.isEmpty else { return }
+        for idx in targets {
+            FileRotator.rotateFile(at: images[idx].url, clockwise: true)
+            images[idx].rotation = 0
+        }
         objectWillChange.send()
     }
     
     func rotateCounterClockwise() {
-        guard images.indices.contains(currentIndex) else { return }
-        let url = images[currentIndex].url
-        FileRotator.rotateFile(at: url, clockwise: false)
-        images[currentIndex].rotation = 0
+        let targets = rotationTargets
+        guard !targets.isEmpty else { return }
+        for idx in targets {
+            FileRotator.rotateFile(at: images[idx].url, clockwise: false)
+            images[idx].rotation = 0
+        }
         objectWillChange.send()
     }
     

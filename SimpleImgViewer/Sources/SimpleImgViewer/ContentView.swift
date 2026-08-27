@@ -3,17 +3,17 @@ import AppKit
 import UniformTypeIdentifiers
 
 /// Main content view — minimal chrome: no buttons, keyboard-driven.
-/// 's' toggles a settings panel on the right; 'p' toggles bottom carousel.
+/// 's' toggles a settings panel on the right; 'c' toggles bottom carousel.
 struct ContentView: View {
     @StateObject private var store = ImageStore()
     @StateObject private var voice = VoiceController()
     @State private var showOpenPanel = false
     @State private var showCheatsheet = false
-    
+
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            
+
             HStack(spacing: 0) {
                 ZStack {
                     VStack(spacing: 0) {
@@ -25,20 +25,19 @@ struct ContentView: View {
                             mainImageSection
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        
-                        // Bottom thumbnail carousel (toggled with 'p')
+
+                        // Bottom thumbnail carousel (toggled with 'c')
                         if store.carouselVisible {
                             ThumbnailCarousel(store: store)
                                 .transition(.move(edge: .bottom).combined(with: .opacity))
                         }
                     }
-                    
+
                     // Cheatsheet overlays ONLY the viewer area — settings panel stays fully visible
                     if showCheatsheet {
                         ZStack {
                             Color.black.opacity(0.55)
                                 .onTapGesture { showCheatsheet = false }
-                            
                             ShortcutsCheatsheet()
                                 .transition(.opacity)
                         }
@@ -46,7 +45,7 @@ struct ContentView: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
-                
+
                 // Right settings panel (toggled with 's')
                 if store.settingsVisible {
                     SettingsPanel(store: store, showOpenPanel: $showOpenPanel, showCheatsheet: $showCheatsheet)
@@ -90,7 +89,7 @@ struct ContentView: View {
                     .foregroundColor(.black)
                     .cornerRadius(6)
                 }
-                
+
                 Text(voice.statusText)
                     .font(.caption2)
                     .foregroundColor(.white.opacity(0.7))
@@ -118,11 +117,14 @@ struct ContentView: View {
             voice.onPrevious = { store.goToPrevious() }
         }
     }
-    
-    // MARK: - Keyboard Event Monitor (character-based matching)
-    
+
+    // MARK: - Keyboard Event Monitor (single NSEvent monitor)
+
     private func setupKeyboardMonitor() {
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            print("[SIV] KeyDown: keyCode=\(event.keyCode) chars='\(event.charactersIgnoringModifiers ?? "nil")'")
+            
+            // Ignore Cmd and Option modifiers
             if event.modifierFlags.contains(.command) || event.modifierFlags.contains(.option) {
                 return event
             }
@@ -165,24 +167,23 @@ struct ContentView: View {
             }
             
             switch event.keyCode {
-            case 123:
-                store.goToPrevious()
+            case 123: // Left arrow
+                store.goToPrevious(shift: event.modifierFlags.contains(.shift))
                 return nil
-            case 124:
-                store.goToNext()
+            case 124: // Right arrow
+                store.goToNext(shift: event.modifierFlags.contains(.shift))
                 return nil
             default:
                 return event
             }
         }
     }
-    
+
     // MARK: - Main Image Display
-    
+
     @ViewBuilder
     private var mainImageSection: some View {
         GeometryReader { geo in
-            let zoomed = store.zoomScale > 1.0
             Group {
                 if let info = store.currentImage {
                     if ImageInfo.isAnimated(info.url) {
@@ -211,18 +212,18 @@ struct ContentView: View {
             .animation(.easeInOut(duration: 0.2), value: store.zoomScale)
         }
     }
-    
+
     // MARK: - Zoom ('z' toggles 2x centered at cursor)
-    
+
     private func toggleZoomAtCursor() {
         guard let window = NSApp.keyWindow ?? NSApp.windows.first(where: { $0.isVisible }) else { return }
-        
+
         // Cursor position in window coordinates, top-left origin (matches SwiftUI)
         let mouse = NSEvent.mouseLocation
         let frame = window.frame
         let localX = mouse.x - frame.origin.x
         let localY = (frame.origin.y + frame.height) - mouse.y
-        
+
         // Cycle zoom levels: 1x -> 2x -> 4x -> 1x
         let nextScale: Double
         switch store.zoomScale {
@@ -230,7 +231,7 @@ struct ContentView: View {
         case ..<3.0: nextScale = 4.0
         default:     store.resetZoom(); return
         }
-        
+
         // Offset from window center; keep the cursor point stationary under the scale
         let cx = frame.width / 2
         let cy = frame.height / 2
@@ -239,49 +240,28 @@ struct ContentView: View {
                       offsetX: -(localX - cx) * k,
                       offsetY: -(localY - cy) * k)
     }
-    
-    // MARK: - Slideshow Badge
-    
-    @ViewBuilder
-    private var slideshowBadge: some View {
-        if store.isSlideshowPlaying {
-            HStack(spacing: 5) {
-                Image(systemName: store.randomMode ? "dice" : "play.fill")
-                    .font(.system(size: 9))
-                Text("\(String(format: "%.1f", store.slideshowInterval))s \(store.randomMode ? "random" : "")")
-                    .monospacedDigit()
-            }
-            .font(.caption)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(Color.orange.opacity(0.8))
-            .foregroundColor(.black)
-            .cornerRadius(6)
-            .padding()
-        }
-    }
-    
+
     // MARK: - Empty State
-    
+
     private var emptyState: some View {
         VStack(spacing: 16) {
             Image(systemName: "photo.on.rectangle.angled")
                 .font(.system(size: 64))
                 .foregroundColor(.white.opacity(0.3))
-            
+
             Text("Drop images here to start")
                 .font(.title2)
                 .foregroundColor(.white.opacity(0.5))
-            
+
             Text("Supports PNG, JPG, HEIC, GIF, and more")
                 .font(.caption)
                 .foregroundColor(.white.opacity(0.3))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-    
+
     // MARK: - Phase Indicator (Testing)
-    
+
     private var phaseIndicator: some View {
         Text("Phase 3b: Minimal UI + Settings Panel ('s')")
             .font(.caption)
@@ -292,9 +272,9 @@ struct ContentView: View {
             .cornerRadius(4)
             .padding()
     }
-    
+
     // MARK: - Helpers
-    
+
     private func loadImage(_ info: ImageInfo) -> NSImage? {
         NSImage(contentsOf: info.url)
     }
