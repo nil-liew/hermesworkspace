@@ -9,11 +9,19 @@ struct SimpleImgViewerApp: App {
         WindowGroup("SimpleImgViewer") {
             ContentView()
         }
-        .windowStyle(.hiddenTitleBar)
     }
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApplication.shared.setActivationPolicy(.regular)
+        
+        DispatchQueue.main.async {
+            guard let window = NSApp.windows.first(where: { $0.isVisible }) else { return }
+            window.center()
+        }
+    }
+    
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return true
     }

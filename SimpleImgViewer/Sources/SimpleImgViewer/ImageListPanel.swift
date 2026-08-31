@@ -95,6 +95,9 @@ struct ShortcutsCheatsheet: View {
         .init(keys: "0", action: "Viewer size: ½ screen ↔ full screen"),
         .init(keys: "Space", action: "Slideshow play/pause"),
         .init(keys: "z", action: "Zoom cycle 1× → 2× → 4× at cursor"),
+        .init(keys: "⌘A", action: "Select all"),
+        .init(keys: "⌫", action: "Remove from list"),
+        .init(keys: "⌘⇧⌫", action: "Remove and delete source file"),
     ]
     
     private func rowView(_ row: Row) -> some View {

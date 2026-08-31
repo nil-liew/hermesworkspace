@@ -53,9 +53,6 @@ struct ContentView: View {
                 }
             }
         }
-        .overlay(alignment: .topLeading) {
-            phaseIndicator
-        }
         .overlay(alignment: .topTrailing) {
             // Voice status badge (top-right, above slideshow badge)
             if voice.isListening {
@@ -122,9 +119,31 @@ struct ContentView: View {
 
     private func setupKeyboardMonitor() {
         NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            print("[SIV] KeyDown: keyCode=\(event.keyCode) chars='\(event.charactersIgnoringModifiers ?? "nil")'")
-            
-            // Ignore Cmd and Option modifiers
+            print("[SIV] KeyDown: keyCode=\(event.keyCode) modifierFlags=\(event.modifierFlags)")
+
+            // Special case: allow Cmd+Shift+Backspace for delete file
+            if event.keyCode == 51 { // Backspace/Delete
+                if event.modifierFlags.contains(.command) && event.modifierFlags.contains(.shift) {
+                    store.removeSelectedAndDelete()
+                    return nil
+                } else if !event.modifierFlags.contains(.command) {
+                    store.removeSelected()
+                    return nil
+                }
+            }
+
+            // Special case: allow Cmd+A for select all
+            if event.modifierFlags.contains(.command) && !event.modifierFlags.contains(.shift) &&
+               !event.modifierFlags.contains(.option) {
+                if let chars = event.charactersIgnoringModifiers?.lowercased(), chars == "a" {
+                    store.selectAll()
+                    return nil
+                }
+                // Pass other Cmd shortcuts to system
+                return event
+            }
+
+            // Ignore Cmd and Option modifiers for all other keys
             if event.modifierFlags.contains(.command) || event.modifierFlags.contains(.option) {
                 return event
             }
@@ -258,19 +277,6 @@ struct ContentView: View {
                 .foregroundColor(.white.opacity(0.3))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    // MARK: - Phase Indicator (Testing)
-
-    private var phaseIndicator: some View {
-        Text("Phase 3b: Minimal UI + Settings Panel ('s')")
-            .font(.caption)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(Color.purple.opacity(0.8))
-            .foregroundColor(.white)
-            .cornerRadius(4)
-            .padding()
     }
 
     // MARK: - Helpers

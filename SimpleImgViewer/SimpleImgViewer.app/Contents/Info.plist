@@ -4,17 +4,23 @@
 <dict>
     <key>CFBundleExecutable</key>
     <string>SimpleImgViewer</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleIdentifier</key>
-    <string>com.daddy.SimpleImgViewer</string>
+    <string>com.humankind.simpleimgviewer</string>
     <key>CFBundleName</key>
     <string>SimpleImgViewer</string>
     <key>CFBundleVersion</key>
     <string>1.0</string>
     <key>CFBundleShortVersionString</key>
     <string>1.0</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>13.0</string>
     <key>NSHighResolutionCapable</key>
     <true/>
-</dict>
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Microphone access is needed for voice commands (say "next" or "previous")</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Speech recognition is needed for voice commands</string>
+    </dict>
 </plist>

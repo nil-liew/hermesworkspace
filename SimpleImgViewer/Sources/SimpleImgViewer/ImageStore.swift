@@ -62,6 +62,13 @@ class ImageStore: ObservableObject {
         selectedIndices = Set(lo...hi)
         objectWillChange.send()
     }
+
+    /// Select all images in the carousel
+    func selectAll() {
+        guard !images.isEmpty else { return }
+        selectedIndices = Set(images.indices)
+        objectWillChange.send()
+    }
     
     /// Plain click: single selection, also navigates viewer to that image
     func clickSelect(index: Int) {
@@ -161,6 +168,35 @@ class ImageStore: ObservableObject {
         objectWillChange.send()
     }
     
+    // MARK: - Remove images
+
+    /// Remove selected images from the list only (keeps source files)
+    func removeSelected() {
+        guard !selectedIndices.isEmpty else { return }
+        let indicesToRemove = Array(selectedIndices).sorted(by: >)
+        for idx in indicesToRemove {
+            if idx == currentIndex {
+                currentIndex = max(0, currentIndex - 1)
+            } else if idx < currentIndex {
+                currentIndex -= 1
+            }
+        }
+        images.remove(atOffsets: IndexSet(indicesToRemove))
+        selectedIndices = currentIndex >= 0 && currentIndex < images.count ? [currentIndex] : []
+        shiftAnchor = currentIndex
+        objectWillChange.send()
+    }
+
+    /// Remove selected images and delete source files from disk
+    func removeSelectedAndDelete() {
+        guard !selectedIndices.isEmpty else { return }
+        let indicesToRemove = Array(selectedIndices).sorted()
+        for idx in indicesToRemove {
+            try? FileManager.default.removeItem(at: images[idx].url)
+        }
+        removeSelected()
+    }
+
     // MARK: - Slideshow
     
     func toggleSlideshow() {
