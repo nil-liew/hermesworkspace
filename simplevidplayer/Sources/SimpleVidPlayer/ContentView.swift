@@ -14,6 +14,9 @@ struct VideoContainerView: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
         let view = DropView()
         view.onFiles = onFiles
+        view.onMousePosition = { [weak vm] point in
+            vm?.currentMouseFraction = point
+        }
         vm.player.drawable = view
         vm.videoView = view
         return view
@@ -23,11 +26,8 @@ struct VideoContainerView: NSViewRepresentable {
         (nsView as? DropView)?.onFiles = onFiles
         if vm.player.drawable == nil {
             vm.player.drawable = nsView
-            // fresh drawable: force rotation to be re-applied once the vout settles
             context.coordinator.appliedSteps = -2
         }
-        // CRITICAL: only touch geometry when the rotation step CHANGED.
-        // Re-applying frames/transforms while a vout is initializing aborts VLCKit.
         if context.coordinator.appliedSteps != vm.rotationSteps {
             applyRotation(to: nsView, steps: vm.rotationSteps)
             context.coordinator.appliedSteps = vm.rotationSteps
@@ -64,10 +64,29 @@ struct VideoContainerView: NSViewRepresentable {
         let angle: CGFloat = steps == 1 ? -90 : (steps == 2 ? 180 : 90) // CA rotation is CCW-positive
         view.layer?.transform = CATransform3DMakeRotation(angle * .pi / 180, 0, 0, 1)
     }
+
+    /// Apply zoom transform to the NSView layer, centered at the given anchor point.
+    private func applyZoom(to view: NSView, scale: Double, anchor: CGPoint) {
+        guard let layer = view.layer else { return }
+
+        if scale <= 1.0 {
+            layer.transform = CATransform3DIdentity
+            layer.anchorPoint = CGPoint(x: 0.0, y: 0.0)
+            layer.position = CGPoint(x: 0, y: 0)
+            view.frame = view.bounds
+            return
+        }
+
+        layer.anchorPoint = anchor
+        let transform = CATransform3DMakeScale(CGFloat(scale), CGFloat(scale), 1.0)
+        layer.transform = transform
+    }
 }
 
 final class DropView: NSView {
     var onFiles: (([URL]) -> Void)?
+    var onMouseMove: ((Double, Double) -> Void)?
+    var onMousePosition: ((CGPoint) -> Void)?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -90,6 +109,15 @@ final class DropView: NSView {
         else { return false }
         DispatchQueue.main.async { self.onFiles?(urls) }
         return true
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        let fractionX = bounds.width > 0 ? point.x / bounds.width : 0.5
+        let fractionY = bounds.height > 0 ? 1.0 - (point.y / bounds.height) : 0.5 // Flip Y
+        let mousePos = CGPoint(x: fractionX, y: fractionY)
+        onMousePosition?(mousePos)
+        onMouseMove?(fractionX, fractionY)
     }
 }
 
@@ -157,12 +185,12 @@ struct ContentView: View {
                     EmptyView()
                 }
                 .keyboardShortcut("p", modifiers: [])
+                Button("") { vm.toggleZoom() }
+                    .keyboardShortcut("z", modifiers: [])
             }
             .opacity(0)
         )
     }
-
-    // MARK: - Video area
 
     private var videoArea: some View {
         ZStack {
@@ -174,6 +202,7 @@ struct ContentView: View {
             VideoContainerView(vm: vm) { urls in
                 vm.addToPlaylistAndPlay(urls)
             }
+            .scaleEffect(vm.zoomScale, anchor: UnitPoint(x: vm.zoomAnchor.x, y: vm.zoomAnchor.y))
 
             VStack {
                 Spacer()
@@ -249,6 +278,7 @@ struct ContentView: View {
         .init(keys: "-", action: "Screenshot → <name> <N>.jpg"),
         .init(keys: "+", action: "Start / stop video clipping"),
         .init(keys: "i", action: "Toggle this cheatsheet"),
+        .init(keys: "z", action: "Zoom 3× at cursor"),
     ]
 
     private struct CheatsheetView: View {

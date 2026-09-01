@@ -25,6 +25,10 @@ final class PlayerViewModel: NSObject, ObservableObject {
     @Published var rotationSteps = 0
     // Screen size cycle: 0 = normal (1x), 1 = half (0.5x), 2 = double (2x)
     @Published var screenSizeStep = 0
+    // Zoom: 1x = off, 3x = on
+    @Published var zoomScale: Double = 1.0
+    var zoomAnchor: CGPoint = CGPoint(x: 0.5, y: 0.5)
+    var currentMouseFraction: CGPoint = CGPoint(x: 0.5, y: 0.5)
     // Video fps from parsed media metadata; 0 = unknown (frame step falls back to 30fps)
     var framesPerSecond: Double = 0
 
@@ -378,6 +382,19 @@ final class PlayerViewModel: NSObject, ObservableObject {
     func cycleScreenSize() {
         screenSizeStep = (screenSizeStep + 1) % 2
         resizeWindow(for: screenSizeStep)
+    }
+
+    // MARK: - Zoom ("z")
+
+    func toggleZoom() {
+        if zoomScale > 1 {
+            zoomScale = 1.0
+            zoomAnchor = CGPoint(x: 0.5, y: 0.5)
+        } else {
+            zoomScale = 3.0
+            // Use the last tracked mouse position
+            zoomAnchor = currentMouseFraction
+        }
     }
 
     private func resizeWindow(for step: Int) {
