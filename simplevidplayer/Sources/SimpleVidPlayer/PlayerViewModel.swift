@@ -391,7 +391,7 @@ final class PlayerViewModel: NSObject, ObservableObject {
             zoomScale = 1.0
             zoomAnchor = CGPoint(x: 0.5, y: 0.5)
         } else {
-            zoomScale = 3.0
+            zoomScale = 8.0
             // Use the last tracked mouse position
             zoomAnchor = currentMouseFraction
         }
