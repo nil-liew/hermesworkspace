@@ -24,3 +24,9 @@
 - Shared wiki contains 76 skill concepts from davidondrej/skills
 - AGENTS.md updated to reference both knowledge systems
 - Two-source OKF workflow: local (Git-tracked) + shared (Google Drive)
+
+## [2026-08-31] skills | Hermes Skills Visibility Documented
+- Added `hermes-skills-visibility.md` to explain user-invoked vs model-invoked skills
+- Matt Pocock engineering skills (`grill-me`, `to-spec`, `implement`, `wayfinder`) are user-invoked by design
+- User-invoked skills have `disable-model-invocation: true` and don't appear in Skills tab UI
+- Created `hermes-skills-system` skill with full mechanics reference

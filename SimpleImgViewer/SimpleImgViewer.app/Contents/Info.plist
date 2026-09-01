@@ -11,9 +11,9 @@
     <key>CFBundleName</key>
     <string>SimpleImgViewer</string>
     <key>CFBundleVersion</key>
-    <string>1.0</string>
+    <string>1.1</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
+    <string>1.1</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>LSMinimumSystemVersion</key>
@@ -22,5 +22,5 @@
     <string>Microphone access is needed for voice commands (say "next" or "previous")</string>
     <key>NSSpeechRecognitionUsageDescription</key>
     <string>Speech recognition is needed for voice commands</string>
-    </dict>
+</dict>
 </plist>
