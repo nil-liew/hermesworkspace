@@ -1,5 +1,11 @@
 # Knowledge Base Changelog
 
+## [2026-11-19] uninstall | TREK trip planner removed
+- `~/trek` deleted in full per user directive — install tree, `.env` (admin creds), SQLite trip data (3.1M, discarded per user), and uploads (404K)
+- No Docker containers/volumes remained (stack was already down); no tailscale serve config present
+- Removed `knowledge/trek-selfhosted-planner.md` + "Self-Hosted Services" section from index.md
+- Install history (2026-10-29) remains in this changelog; doc link removed
+
 ## [2026-11-19] ingest | OKF docfix verdict bookend (knowledge-ops board)
 - Gate: auditor t_1080ffbf PASS (score 1.00, 0 items, loop 0/5) on apply t_1a4681ce ← audit t_76c58558; byte-identity 112/116 snapshot files, exactly the 4 intended files modified, 0 unexpected, 0 deleted
 - `knowledge/shared-wiki.md`: "76 skill concepts" → 48 concept pages (47 ingested from davidondrej/skills + 1 local hermes-workspace); "28 source summaries" → 29; added "26 entity pages (reconciled 2026-11-17)" line; frontmatter updated 2026-08-17 → 2026-11-19
