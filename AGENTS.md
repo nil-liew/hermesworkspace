@@ -19,7 +19,7 @@ Single-context layout: one `CONTEXT.md` + `docs/adr/` at the repo root. See `doc
 You have access to **two** OKF v0.1 compliant knowledge systems:
 
 1. **Local Bundle** (`./knowledge/`) — Workspace-specific context, project decisions, agent instructions
-2. **Shared Wiki** (`~/Library/CloudStorage/GoogleDrive-.../ObsidianKB/wiki/`) — 76 skill concepts from davidondrej/skills
+2. **Shared Wiki** (`~/Library/CloudStorage/GoogleDrive-humankindsolution@gmail.com/My Drive/ObsidianKB/wiki/`) — 48 skill concepts (47 from davidondrej/skills + 1 local hermes-workspace)
 
 [Read the bridge documentation](./shared-wiki.md) for details on both systems.
 
@@ -49,7 +49,7 @@ When recalling past decisions, specifications, or historical context:
 
 2. **Progressive Disclosure**:
    - **Step A**: Read `./knowledge/index.md` to map Hermes workspace context, then read `./knowledge/shared-wiki.md` to understand the shared wiki.
-   - **Step B**: For local concepts, inspect frontmatter in `./knowledge/`. For skills, check YAML frontmatter in `~/Library/CloudStorage/.../wiki/concepts/`.
+   - **Step B**: For local concepts, inspect frontmatter in `./knowledge/`. For skills, check YAML frontmatter in `~/Library/CloudStorage/GoogleDrive-humankindsolution@gmail.com/My Drive/ObsidianKB/wiki/concepts/`.
    - **Step C**: Read full content only for files relevant to the active task.
    - **Step D**: Follow Markdown links across both systems — local concepts link to shared wiki skills and vice versa.
 
@@ -57,9 +57,9 @@ When recalling past decisions, specifications, or historical context:
 
 - **Create/Update on Breakthrough**: When you resolve a complex problem, establish a new architecture decision, or learn a critical codebase rule:
   - Write to `./knowledge/` for workspace-specific context (version-controlled via Git)
-  - Update `~/Library/CloudStorage/.../wiki/concepts/` for shared skill documentation
+  - Update `~/Library/CloudStorage/GoogleDrive-humankindsolution@gmail.com/My Drive/ObsidianKB/wiki/concepts/` for shared skill documentation
 - **In-Place Updates**: Update existing files directly rather than fragmenting context across multiple redundant files.
 - **Git Integration**: Local bundle changes are tracked via Git at https://github.com/nil-liew/hermesworkspace
 - **Logging:** Record updates in both locations:
   - `./knowledge/changelog.md` for local changes
-  - `~/Library/CloudStorage/.../wiki/log.md` for shared wiki changes
+  - `~/Library/CloudStorage/GoogleDrive-humankindsolution@gmail.com/My Drive/ObsidianKB/wiki/log.md` for shared wiki changes

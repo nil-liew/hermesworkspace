@@ -1,8 +1,8 @@
 ---
 type: concept
 title: Shared OKF Wiki
-description: Bridge to shared Obsidian wiki on Google Drive with 76 skill concepts
-updated: 2026-08-17
+description: Bridge to shared Obsidian wiki on Google Drive with 48 skill concepts
+updated: 2026-11-19
 tags: [knowledge, wiki, shared, bridge]
 ---
 # Shared OKF Wiki
@@ -11,8 +11,9 @@ tags: [knowledge, wiki, shared, bridge]
 `/Users/daddy/Library/CloudStorage/GoogleDrive-humankindsolution@gmail.com/My Drive/ObsidianKB/wiki/`
 
 ## Contents
-- **76 concept files** across 5 categories
-- 28 source summaries (clippings)
+- **48 concept files** across 5 categories (47 ingested from davidondrej/skills + 1 local: hermes-workspace)
+- 29 source summaries (clippings)
+- 26 entity pages (reconciled 2026-11-17)
 - Entities, metrics directories
 
 ## Categories
@@ -21,6 +22,7 @@ tags: [knowledge, wiki, shared, bridge]
 - **Research & Web** (8): browser-harness, deep-research, youtube-transcript, research-prompt
 - **Skill Authoring** (4): effective-agent-skills, distribute-skill-to-all-agents, push-skill-to-github
 - **Thinking & Documentation** (11): brain-to-docs, decisions, level-up, teach, before-building
+- Local (uncategorized in wiki index): hermes-workspace
 
 ## Relationship to Local Bundle
 | Aspect | Local (`./knowledge/`) | Shared (Google Drive) |

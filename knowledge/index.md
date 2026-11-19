@@ -20,6 +20,10 @@ Multi-agent team reference: node topology and structured delivery-record contrac
 - [Agent Team Topology](./agent-team-topology.md)
 - [Agent Record Schemas](./agent-record-schemas.md)
 
+### Self-Hosted Services
+Services running on this Mac (Docker).
+- [TREK Self-Hosted Trip Planner](./trek-selfhosted-planner.md)
+
 ### Knowledge Bridge
 Cross-reference between local bundle and shared wiki.
 - [Shared OKF Wiki](./shared-wiki.md)
@@ -31,4 +35,4 @@ Development methodologies, planning patterns, and operational procedures.
 
 ---
 
-*Last updated: 2026-10-26*
+*Last updated: 2026-10-29*
