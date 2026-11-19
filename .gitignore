@@ -18,3 +18,9 @@ build_derivedData/
 /.scratch/
 *.dmg
 __pycache__/
+
+# media work dirs (intentionally unversioned, ~25M of renders/assets)
+/assets/
+/latency-video/
+/hyperframes-motion-slideshow/
+/videos/
