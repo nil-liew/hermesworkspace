@@ -7,3 +7,9 @@ build_derivedData/
 .swiftpm/configuration/registries.json
 .swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
 .netrc
+
+# standalone embedded git repos (NOT submodules — gitlinks would break clones)
+/OpenIntelligentUI/
+/laya/
+/simplelrcplayer/
+/stemsplitter/
