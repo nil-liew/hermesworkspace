@@ -13,3 +13,7 @@ build_derivedData/
 /laya/
 /simplelrcplayer/
 /stemsplitter/
+
+# transient scratch + build artifacts
+/.scratch/
+*.dmg

@@ -1,0 +1,23 @@
+/* YouTube Auto Ad Skipper v1.5 — hide ad UI on YouTube pages.
+   Best-effort: YouTube renames classes over time, so these selectors may
+   need updating. They target ad surfaces only — never the video or the
+   skip button. */
+
+/* In-feed ad cards (sponsored video rows) */
+ytd-ad-slot-renderer,
+ytd-ad-engagement-renderer,
+.ytd-ad-slot-renderer {
+  display: none !important;
+}
+
+/* In-feed text ad message (small "Ad" banner between cards) */
+ytd-ad-text-message-renderer,
+.ytd-ad-text-message-renderer {
+  display: none !important;
+}
+
+/* In-player display/overlay ad banner (mid-video bottom "Ad" strip) */
+.ytp-ad-overlay,
+.ytp-ad-overlay-slot {
+  display: none !important;
+}

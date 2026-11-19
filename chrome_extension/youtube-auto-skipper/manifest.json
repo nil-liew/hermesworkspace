@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Auto Ad Skipper",
+  "version": "1.5",
+  "description": "Skips skippable YouTube ads via a trusted click, blocks ad-network requests, and hides in-feed/overlay ad UI.",
+  "permissions": ["debugger", "declarativeNetRequest"],
+  "host_permissions": ["*://*.youtube.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "adblock",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["content.js"],
+      "css": ["ads.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

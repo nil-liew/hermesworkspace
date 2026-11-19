@@ -1,0 +1,10 @@
+{
+  "assets/map-nyc-paris.png": "982e87145e1f7aa4b97674dba2ceabc7605d67c46234d4f105cdb336ce411688",
+  "assets/sfx-mix.wav": "e3da3426014c629093ef5a50883f24de6445d5ea9f636ad029b25cb68f854493",
+  "compositions/components/confetti.html": "e1aab1fba4eac8fcbed7367d94a262c41b08dc26cd723a3a0cde51158f7c864f",
+  "compositions/components/shimmer-sweep.html": "0358db4e2ec9137c65771e17139741a13e2c12a37be5688fc6cfede9a718d8d6",
+  "compositions/nyc-paris-flight.html": "4ffc5928e71ac8e74e2b517ba9cc78f97761518b6e258586c34786f288f44076",
+  "compositions/vfx-liquid-background.html": "02467e8e3feabfdeb0c89b4463bf6a08ba97214fd2ddd142d62f504fde447c00",
+  "compositions/world-map.html": "a4eb55dec5dffa20c4d172eac0824db0d7d084c6c7652634119a7f360971944e",
+  "compositions/x-post.html": "14b96c7c55108908d611d8d5b206aa65ae8a9682397ca4650d5757a0ea72bf1c"
+}
